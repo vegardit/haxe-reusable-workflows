@@ -110,7 +110,7 @@ jobs:
 
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets
-      uses: ./.github/actions/setup-haxe-targets
+      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe-targets@v1
       with:
         setup-cpp:    ${{ env.TEST_CPP    != 'false' }}
         setup-cs:     ${{ env.TEST_CS     != 'false' }}
