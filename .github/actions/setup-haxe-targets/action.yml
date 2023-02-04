@@ -1,0 +1,493 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Targets
+description: Installs and configures Haxe compiler targets
+inputs:
+  setup-cpp:    { default: "true", description: "true or false" }
+  setup-cs:     { default: "true", description: "true or false" }
+  setup-flash:  { default: "true", description: "true or false" }
+  setup-hl:     { default: "true", description: "true or false" }
+  setup-java:   { default: "true", description: "true or false or Java version" }
+  setup-lua:    { default: "true", description: "true or false or Lua version" }
+  setup-node:   { default: "true", description: "true or false or Node.js version" }
+  setup-php:    { default: "true", description: "true or false or PHP version" }
+  setup-python: { default: "true", description: "true or false or Python version" }
+
+outputs:
+  flash-log:
+    description: "Path to the flash debugger log file"
+    value: ${{ steps.setup-flash.outputs.flash-log }}
+
+runs:
+  using: "composite"
+  steps:
+
+    - name: Process input parameter
+      shell: bash
+      run: |
+        # Convert inputs that can be passed as boolean or string to strings so we can do
+        # {{ env.SETUP_CPP == 'true' }} instead of {{ inputs.setup-cpp == 'true' || inputs.setup-cpp == true }}
+
+        # we need python when installing lua
+        if [[ "${{ inputs.setup-lua }}" != "false" && "${{ inputs.setup-python }}" == "false" ]]; then
+          SETUP_PYTHON="true"
+        else
+          SETUP_PYTHON="${{ inputs.setup-python }}"
+        fi
+
+        cat <<EOF >> $GITHUB_ENV
+        SETUP_CPP=${{  inputs.setup-cpp }}
+        SETUP_CS=${{   inputs.setup-cs }}
+        SETUP_FLASH=${{inputs.setup-flash }}
+        SETUP_HL=${{   inputs.setup-hl }}
+        SETUP_JAVA=${{ inputs.setup-java }}
+        SETUP_LUA=${{  inputs.setup-lua }}
+        SETUP_NODE=${{ inputs.setup-node }}
+        SETUP_PHP=${{  inputs.setup-php }}
+        SETUP_PYTHON=$SETUP_PYTHON
+        EOF
+
+    ##################################################
+    # Cache Restore
+    # See https://github.com/actions/cache/issues/342
+    ##################################################
+    - name: "Haxe Targets Cache: Restore"
+      id: cache-restore
+      if: ${{ !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
+      with:
+        path: |
+          ${{ runner.tool_cache }}/haxe/targets
+        key: ${{ runner.os }}-haxe-targets
+
+
+    - name: "Linux: Configure APT"
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        # Workaround to avoid sporadic connectivity issues "Could not connect to azure.archive.ubuntu.com:80"
+        # see https://github.com/actions/virtual-environments/issues/675
+        echo 'APT::Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-acquire-retries
+        if ! curl --max-time 3 --output /dev/null --silent --head --fail "http://azure.archive.ubuntu.com/ubuntu/dists/"; then
+          sudo sed -i 's/azure\.//' /etc/apt/sources.list
+        fi
+
+        # refresh pkg cache if it does not exist or is older than 60min.
+        # avoid potential 404 see https://github.com/actions/runner-images/issues/592
+        if [[ ! -e /var/lib/apt/lists/partial ]] || [[ $(( $(date +%s) - $(sudo date +%s -r /var/lib/apt/lists/partial) )) -gt 3600 ]]; then
+           sudo apt-get update
+        fi
+
+    - name: "MacOS: Update brew formulas"
+      if: runner.os == 'macOS'
+      shell: bash
+      env:
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        set -eu
+
+        echo "::group::brew update" && brew update && echo "::endgroup::"
+        echo "::group::brew config" && brew config && echo "::endgroup::"
+        echo "::group::brew list" && brew list --version && echo "::endgroup::"
+
+        # workaround to prevent "Error: The `brew link` step did not complete successfully" during "brew install mono"
+        # and setup-python action, see https://github.com/actions/setup-python/issues/577
+        rm -f \
+          /usr/local/share/man/man1/* \
+          /usr/local/share/man/man5/* \
+          /usr/local/bin/idle3 \
+          /usr/local/bin/2to3 \
+          /usr/local/bin/idle3 \
+          /usr/local/bin/pydoc3 \
+          /usr/local/bin/python3 \
+          /usr/local/bin/python3-config
+
+
+    - name: "Install: C# (mono)"
+      if: ${{ env.SETUP_CS == 'true' }}
+      shell: bash
+      env:
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        echo "::group::Install: C# (mono)"
+        set -euox pipefail
+
+        case "${{ runner.os }}" in
+          Linux)
+            if ! hash mono 2>/dev/null; then
+              sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+              os_release=$(lsb_release -cs)
+              if [[ $os_release == "jammy" ]]; then os_release=focal; fi
+              sudo apt-add-repository -y "deb https://download.mono-project.com/repo/ubuntu $os_release main"
+              sudo apt-get install -y mono-devel mono-mcs
+            fi
+            ;;
+          macOS)
+            if ! hash mono 2>/dev/null; then
+              brew install mono
+            fi
+            ;;
+          Windows)
+            if ! hash mono 2>/dev/null; then
+              monoMSICache="$(cygpath '${{ runner.tool_cache }}')/haxe/targets/mono.msi"
+              mkdir -p $(dirname $monoMSICache)
+              if [[ ! -f $monoMSICache ]]; then
+                curl -sSfL https://download.mono-project.com/archive/6.12.0/windows-installer/mono-6.12.0.190-x64-0.msi -o $monoMSICache
+              fi
+              pushd $HOME
+                tail --follow=name --retry mono.log 2>/dev/null | dos2unix -f &
+                MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" cmd /c start /wait msiexec.exe /i "$(cygpath -w $monoMSICache)" /quiet /norestart /L*v mono.log
+                ps aux | grep "[t]ail --follow=name --retry mono.log" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+              popd
+              echo "$(cygpath -w "$PROGRAMFILES/Mono/bin")" >> $GITHUB_PATH
+            fi
+            ;;
+        esac
+        echo "::endgroup::"
+
+    - name: "Test: C# (mono)"
+      if: ${{ env.SETUP_CS == 'true' }}
+      shell: bash
+      run: mono --version
+
+
+    - name: "Install: Flash"
+      if: ${{ env.SETUP_FLASH == 'true' }}
+      id: setup-flash
+      shell: bash
+      run: |
+        echo "::group::Install: Flash"
+        set -euox pipefail
+
+        case "${{ runner.os }}" in
+          Linux)
+
+            # Trust the current directory, so exit can be used
+            #flashHome="$HOME/.macromedia/Flash_Player"
+            flashHome="${{ runner.tool_cache }}/haxe/targets/flashplayer"
+            mkdir -p $(dirname $flashHome)
+            mkdir -m 777 -p "$flashHome/#Security/FlashPlayerTrust"
+            echo $(pwd) > "$flashHome/#Security/FlashPlayerTrust/github_actions.cfg"
+
+            # Configure trace logging
+            echo -e "ErrorReportingEnable=1\\nTraceOutputFileEnable=1" > $HOME/mm.cfg
+            mkdir -m 777 -p "$flashHome/Logs"
+            rm -f "$flashHome/Logs/flashlog.txt"
+            touch "$flashHome/Logs/flashlog.txt"
+
+            # install debugger if not already present
+            if [[ ! -e "$flashHome/flashplayerdebugger" ]]; then
+              sudo apt-get install -y \
+                libcurl3-gnutls \
+                libglib2.0-0 \
+                libgtk2.0-0 \
+                libnss3 \
+                libx11-6 \
+                libxcursor1 \
+                libxext6 \
+                libxt6 \
+                xvfb
+
+              latestMajorVersion=$(curl -sSfL http://fpdownload2.macromedia.com/get/flashplayer/update/current/xml/version_en_mac_pl.xml | grep -oP 'version="\K[0-9]+')
+              curl -sSfL "https://fpdownload.macromedia.com/pub/flashplayer/updaters/$latestMajorVersion/flash_player_sa_linux_debug.x86_64.tar.gz" \
+                | tar -xz -C "$flashHome" --wildcards "flashplayerdebugger"
+            fi
+
+            echo "$flashHome" >> $GITHUB_PATH
+            echo "AUDIODEV=null" >> $GITHUB_ENV
+            echo "flash-log=$flashHome/Logs/flashlog.txt" >> $GITHUB_OUTPUT
+            ;;
+          macOS)
+            echo "WARNING: Don't know how to intall Flash Player on MacOS"
+            ;;
+          Windows)
+            echo "WARNING: Don't know how to intall Flash Player on Windows"
+            ;;
+        esac
+        echo "::endgroup::"
+
+
+    - name: "Install: Hashlink"
+      if: ${{ env.SETUP_HL == 'true' }}
+      shell: bash
+      env:
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        echo "::group::Install: Hashlink"
+        set -euox pipefail
+
+        case "${{ runner.os }}" in
+          Linux)
+            if ! hash hl 2>/dev/null; then
+              hashlinkHome="${{ runner.tool_cache }}/haxe/targets/hashlink"
+              mkdir -p $(dirname $hashlinkHome)
+              if [ ! -f $hashlinkHome/hl ]; then
+                rm -rf $hashlinkHome
+                if [[ -n "${{ github.token }}" ]]; then
+                  authHeader='-H "Authorization: token ${{ github.token }}"'
+                fi
+                latest_url=$(eval curl -fsSL ${authHeader:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*-linux-amd64.tar.gz")
+                curl -sSfL $latest_url | tar -xz -C $HOME
+                mv $HOME/hashlink-* $hashlinkHome
+                chmod 555 $hashlinkHome/hl 
+              fi
+              echo "$hashlinkHome" >> $GITHUB_PATH
+            fi
+            ;;
+          macOS)
+            brew install hashlink
+            ;;
+          Windows)
+            if ! hash hl 2>/dev/null; then
+              hashlinkHome="$(cygpath '${{ runner.tool_cache }}')/haxe/targets/hashlink"
+              mkdir -p $(dirname $hashlinkHome)
+              if [ ! -f $hashlinkHome/hl.exe ]; then
+                rm -rf $hashlinkHome
+                if [[ -n "${{ github.token }}" ]]; then
+                  authHeader='-H "Authorization: token ${{ github.token }}"'
+                fi
+                latest_url=$(eval curl -fsSL ${authHeader:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*win64.zip")
+                curl -sSfL $latest_url -o $HOME/hashlink.zip
+                unzip $HOME/hashlink.zip -d $HOME
+                mv $HOME/hashlink-* $hashlinkHome
+              fi
+              echo "$(cygpath -w $hashlinkHome)" >> $GITHUB_PATH
+            fi
+            ;;
+        esac
+        echo "::endgroup::"
+
+    - name: "Test: Hashlink"
+      if: ${{ env.SETUP_HL == 'true' }}
+      shell: bash
+      run: hl --version
+
+    - name: "Install: Java"
+      if: ${{ env.SETUP_JAVA != 'false' }}
+      uses: actions/setup-java@v3 # https://github.com/marketplace/actions/setup-java-jdk
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.SETUP_JAVA == 'true' && '11' || env.SETUP_JAVA }}
+
+    - name: "Test: Java"
+      if: ${{ env.SETUP_JAVA != 'false' }}
+      shell: bash
+      run: java -version
+
+
+    - name: "Install: Python"
+      if: ${{ env.SETUP_PYTHON != 'false' }}
+      uses: actions/setup-python@v4 # https://github.com/actions/setup-python
+      with:
+        python-version: ${{ env.SETUP_PYTHON == 'true' && '3.10' || env.SETUP_PYTHON }}
+
+    - name: "Configure Python 3 on Windows"
+      if: ${{ env.SETUP_PYTHON != 'false' && runner.os == 'Windows' }}
+      shell: cmd
+      # workaround for https://github.com/actions/setup-python/issues/123
+      run:
+        if not exist "%pythonLocation%\python.exe" (
+          mklink "%pythonLocation%\python3.exe" "%pythonLocation%\python.exe"
+        )
+
+    - name: "Test: Python"
+      if: ${{ env.SETUP_PYTHON != 'false' }}
+      shell: bash
+      run: python --version
+
+
+    - name: "Install: Lua"
+      if: ${{ env.SETUP_LUA != 'false' }}
+      env:
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+        GIT_CONFIG_COUNT: "1"
+        GIT_CONFIG_KEY_0: "advice.detachedHead" # suppress "You are in 'detached HEAD' state. You can look around, make experimental"
+        GIT_CONFIG_VALUE_0: "false"
+      shell: bash
+      run: |
+        set -euxo pipefail
+
+        LUA_HOME=$HOME/lua
+        lualibs=
+        lualib_install_opts=
+        case "${{ runner.os }}" in
+          Windows)
+            echo "::group::Show: compiler config"
+              which gcc --all
+              gcc --version
+
+              which ld --all
+              ld --version
+
+              # Linker Search Path
+              ld --verbose | grep SEARCH_DIR | tr -s ';' \n
+            echo "::endgroup::"
+
+            echo "::group::Install: hererocks"
+              if ! hash hererocks 2>/dev/null; then
+                pip install hererocks
+              fi
+            echo "::endgroup::"
+
+            echo "::group::Install: Lua"
+              if [[ ! -d $LUA_HOME/bin ]]; then
+                hererocks $LUA_HOME --lua ${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }} -rlatest --target=mingw
+              fi
+              echo "$(cygpath -w $LUA_HOME/bin)" >> $GITHUB_PATH
+              export PATH="$LUA_HOME/bin:$PATH"
+            echo "::endgroup::"
+
+            echo "::group::Install: mingw/pcre"
+              curl -sSfL https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst | zstd -d | tar -x --strip-components=1 -C /
+              cp /bin/libpcre*.dll $LUA_HOME/bin
+              lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+            echo "::endgroup::"
+
+            echo "::group::Install: mingw/openssl"
+              # https://github.com/brunoos/luasec/issues/150
+              curl -sSfL https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-openssl-1.1.1.s-1-any.pkg.tar.zst | zstd -d | tar -x --strip-components=1 -C /
+              cp /bin/libcrypto*.dll $LUA_HOME/bin
+              cp /bin/libssl*.dll $LUA_HOME/bin
+              lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
+            echo "::endgroup::"
+
+            echo "::group::Patch: luarocks/luasec"
+              curl -sSfL https://raw.githubusercontent.com/brunoos/luasec/master/luasec-1.2.0-1.rockspec | sed 's/32MD//g' > $HOME/luasec-1.2.0-1.rockspec
+              lualibs+=" $(cygpath -wa $HOME/luasec-1.2.0-1.rockspec)"
+            echo "::endgroup::"
+
+            echo "::group::Patch: luarocks/hx-lua-simdjson"
+              #lualibs+=" hx-lua-simdjson@0.0.1-1"
+              curl -sSfL https://raw.githubusercontent.com/inklit/hx-lua-simdjson/master/hx-lua-simdjson-0.0.1-0.rockspec | sed 's/tag = "0.0.2"/branch = "master"/' > $HOME/hx-lua-simdjson-0.0.1-0.rockspec
+              lualibs+=" $(cygpath -wa $HOME/hx-lua-simdjson-0.0.1-0.rockspec)"
+              if [[ ! -e lua.dll ]]; then
+                cp $LUA_HOME/bin/lua*.dll $LUA_HOME/bin/lua.dll 
+                cp $LUA_HOME/lib/liblua*.a $LUA_HOME/lib/lua.a
+              fi
+            echo "::endgroup::"
+
+            echo "::group::Patch: luarocks/environ"
+              #lualibs+=" environ@0.1.0-1" # for Haxe 3
+              # https://github.com/moteus/lua-environ/issues/1
+              curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $HOME/environ-0.1.0-1.rockspec
+              lualibs+=" $(cygpath -wa $HOME/environ-0.1.0-1.rockspec)"
+            echo "::endgroup::"
+            ;;
+
+          *)
+            echo "::group::Install: hererocks"
+              if ! hash hererocks 2>/dev/null; then
+                case "${{ runner.os }}" in
+                  Linux) sudo apt-get install -y build-essential libpcre3-dev libssl-dev libreadline-dev cmake unzip ;;
+                  macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
+                esac
+                pip install hererocks
+              fi
+            echo "::endgroup::"
+ 
+            echo "::group::Install: Lua"
+              if [[ ! -d $LUA_HOME/bin ]]; then
+                pushd $HOME
+                  hererocks lua --lua ${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }} -rlatest
+                popd
+              fi
+              echo "$LUA_HOME/bin" >> $GITHUB_PATH
+              export PATH="$LUA_HOME//bin:$PATH"
+            echo "::endgroup::"
+
+            lualibs+=" luasec@1.0.2-1"
+            lualibs+=" hx-lua-simdjson@0.0.1-1"
+            lualibs+=" environ@0.1.0-1" # for Haxe 3
+            ;;
+        esac
+
+        lualibs+=" lrexlib-pcre@2.9.1-1"
+        lualibs+=" luasocket@3.1.0-1"
+        lualibs+=" luautf8@0.1.1-1"
+        lualibs+=" luv@1.44.2-1"
+
+        for lib in $lualibs; do
+          echo "::group::Install: lualib $lib"
+            lib_name="${lib%%@*}"
+            lib_ver="${lib#*@}"
+            case "${{ runner.os }}" in
+              Windows) luarocks.bat install $lib_name $lib_ver ${lualib_install_opts:-} ;;
+              *)       luarocks     install $lib_name $lib_ver ${lualib_install_opts:-} ;;
+            esac
+          echo "::endgroup::"
+        done
+
+    - name: "Test: Lua"
+      if: ${{ env.SETUP_LUA != 'false' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        lua -v
+
+
+    - name: "Intall: Node.js"
+      if: ${{ env.SETUP_NODE != 'false' }}
+      uses: actions/setup-node@v3 # https://github.com/marketplace/actions/setup-node-js-environment
+      with:
+        node-version: ${{ env.SETUP_NODE == 'true' && 'lts/*' || env.SETUP_NODE }}
+
+    - name: "Test: Node"
+      if: ${{ env.SETUP_NODE != 'false' }}
+      shell: bash
+      run: node --version
+
+
+    - name: "Install: PHP"
+      if: ${{ env.SETUP_PHP != 'false' }}
+      uses: shivammathur/setup-php@v2 # https://github.com/marketplace/actions/setup-php-action
+      env:
+        runner: ${{ env.ACT && 'self-hosted' || 'github' }}
+      with:
+        php-version: ${{ env.SETUP_PHP == 'true' && '7.4' || env.SETUP_PHP }}
+        extensions: mbstring, xml
+
+    - name: "Test: PHP"
+      if: ${{ env.SETUP_PHP != 'false' }}
+      shell: bash
+      run: php --version
+
+
+    ##################################################
+    # Cache Update
+    # See https://github.com/actions/cache/issues/342
+    ##################################################
+    - name: "Haxe Targets Cache: Delete Previous"
+      if: ${{ steps.cache-restore.outputs.cache-hit && !env.ACT }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        gh extension install actions/gh-actions-cache || true
+        gh actions-cache delete ${{ steps.cache-restore.outputs.cache-matched-key }} --confirm || true
+
+    - name: "Haxe Targets Cache: Update"
+      uses: actions/cache/save@v3
+      if: ${{ always() && !cancelled() && !env.ACT }} # save cache even fails
+      with:
+        path: |
+          ${{ runner.tool_cache }}/haxe/targets
+        key: ${{ steps.cache-restore.outputs.cache-primary-key }}

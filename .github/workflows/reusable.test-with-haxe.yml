@@ -1,0 +1,335 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Test with Haxe
+on:
+  workflow_call:
+    inputs:
+      runner-os:    { required: true,        type: string, description: "e.g. ubuntu-latest, macos-latest, windows-latest" }
+      haxe-version: { required: true,        type: string, description: "Haxe version to test with" }
+      haxe-libs:    { required: false,       type: string, description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
+      hxml-file:    { default: "tests.hxml", type: string, description: "default .hxml file to use" }
+      output-dir:   { default: "target",     type: string, description: "output folder for compilation artifacts"}
+
+      test-cpp:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-cs:     { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-eval:   { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-flash:  { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-hl:     { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-java:   { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-jvm:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-lua:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-neko:   { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-node:   { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-php:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+      test-python: { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test-with-haxe:
+    runs-on: ${{ inputs.runner-os }}
+
+    steps:
+    - name: Process input parameter
+      run: |
+        # Convert inputs that can be passed as boolean or string to strings so we can do
+        # {{ env.TEST_CPP == 'true' }} instead of {{ inputs.test-cpp == 'true' || inputs.test-cpp == true }}
+        cat <<EOF >> $GITHUB_ENV
+        TEST_CPP=${{    inputs.test-cpp }}
+        TEST_CS=${{     inputs.test-cs }}
+        TEST_EVAL=${{   inputs.test-eval }}
+        TEST_FLASH=${{  inputs.test-flash }}
+        TEST_HL=${{     inputs.test-hl }}
+        TEST_JAVA=${{   inputs.test-java }}
+        TEST_JVM=${{    inputs.test-jvm }}
+        TEST_LUA=${{    inputs.test-lua }}
+        TEST_NEKO=${{   inputs.test-neko }}
+        TEST_NODE=${{   inputs.test-node }}
+        TEST_PHP=${{    inputs.test-php }}
+        TEST_PYTHON=${{ inputs.test-python }}
+        EOF
+
+    - name: Show environment variables
+      run: env | sort
+
+    - name: Git Checkout
+      uses: actions/checkout@v3 #https://github.com/actions/checkout
+
+    ##################################################
+    # Cache Restore
+    # See https://github.com/actions/cache/issues/342
+    ##################################################
+    - name: "Haxe Cache: Restore"
+      id: cache-restore
+      if: ${{ !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
+      with:
+        path: |
+          ${{ runner.tool_cache }}/haxe/lib
+          ${{ runner.tool_cache }}/yq
+        key: ${{ runner.os }}-haxe-${{ inputs.haxe-version }}
+
+
+    ##################################################
+    # Install software
+    ##################################################
+    - name: "Install: yq" # https://github.com/mikefarah/yq
+      run: |
+        set -euo pipefail
+
+        if ! hash yq 2>/dev/null; then
+          case "${{ runner.os }}" in
+            Windows) yqHome="$(cygpath '${{ runner.tool_cache }}')/yq" ;;
+            *)       yqHome="${{ runner.tool_cache }}/yq" ;;
+          esac
+          if [[ ! -f $yqHome/yq* ]]; then
+            yq_version=$(curl -sSfL -o /dev/null -w "%{url_effective}\n" https://github.com/mikefarah/yq/releases/latest | grep -o '[^/]*$')
+
+            case "${{ runner.os }}" in
+              Linux)   yq_source_exe="yq_linux_amd64";       yq_target_exe=yq ;;
+              macOS)   yq_source_exe="yq_darwin_amd64";      yq_target_exe=yq ;;
+              Windows) yq_source_exe="yq_windows_amd64.exe"; yq_target_exe=yq.exe ;;
+            esac
+            yq_download_url="https://github.com/mikefarah/yq/releases/download/$yq_version/$yq_source_exe"
+            echo "Downloading [$yq_download_url]..."
+            mkdir -p $yqHome
+            curl -fsSL --retry 3 --retry-delay 5 -o $yqHome/$yq_target_exe "$yq_download_url"
+            chmod 777 $yqHome/$yq_target_exe
+          fi
+
+          echo '${{ runner.tool_cache }}/yq' >> $GITHUB_PATH
+        fi
+
+    - name: "Test: yq"
+      run: yq --version
+
+    - name: "Setup: Haxe with Targets"
+      id: setup-haxe-targets
+      uses: ./.github/actions/setup-haxe-targets
+      with:
+        setup-cpp:    ${{ env.TEST_CPP    != 'false' }}
+        setup-cs:     ${{ env.TEST_CS     != 'false' }}
+        setup-flash:  ${{ env.TEST_FLASH  != 'false' }}
+        setup-hl:     ${{ env.TEST_HL     != 'false' }}
+        setup-java:   ${{ env.TEST_JAVA   != 'false' || env.TEST_JVM != 'false' }}
+        setup-lua:    ${{ env.TEST_LUA    != 'false' }}
+        setup-node:   ${{ env.TEST_NODE   != 'false' }}
+        setup-php:    ${{ env.TEST_PHP    == 'true' && startsWith(inputs.haxe-version, '3.') && '5.6' || env.TEST_PHP != 'false' }}
+        setup-python: ${{ env.TEST_PYTHON != 'false' }}
+
+    - name: "Install: Haxe ${{ matrix.haxe }}"
+      uses: krdlab/setup-haxe@v1 # https://github.com/krdlab/setup-haxe
+      with:
+        haxe-version: ${{ inputs.haxe-version }}
+
+    - name: "Test: Haxe"
+      run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
+
+    - name: "Install: Haxe Libraries"
+      run: |
+        set -euo pipefail
+
+        case "${{runner.os}}" in
+          Windows)
+            export HAXELIB_PATH="${{ runner.tool_cache }}\\haxe\\lib"
+            mkdir -p "$(cygpath "$HAXELIB_PATH")"
+            ;;
+          *)
+            export HAXELIB_PATH="${{ runner.tool_cache }}/haxe/lib"
+            mkdir -p "$HAXELIB_PATH"
+            ;;
+        esac
+        echo "HAXELIB_PATH=$HAXELIB_PATH" >> $GITHUB_ENV
+
+        haxelib config
+
+        haxelibs="${{ inputs.haxe-libs }}"
+        if [[ $TEST_CPP  == "true" ]]; then haxelibs+=" hxcpp"; fi
+        if [[ $TEST_CS   == "true" ]]; then haxelibs+=" hxcs"; fi
+        if [[ $TEST_JAVA == "true" || $TEST_JVM == "true" ]]; then 
+          if [[ "${{ inputs.haxe-version }}" == 3.* ]]; then
+            haxelibs+=" hxjava@3.2.0"
+          else
+            haxelibs+=" hxjava"
+          fi
+        fi
+        if [[ $TEST_NODE == "true" ]]; then haxelibs+=" hxnodejs"; fi
+
+        if [[ -n "$haxelibs" ]]; then
+          for lib in $haxelibs; do
+            echo "::group::install_$lib"
+            lib_name="${lib%%@*}"
+            lib_ver="$(echo $lib | cut -s -d@ -f2)"
+            # for loops are to mitigate possible HTTP connection timeouts
+            if [[ -n $lib_ver ]]; then
+              for i in {1..3}; do haxelib --always install $lib_name $lib_ver && break || sleep 2; done
+              haxelib --always set $lib_name $lib_ver
+            else
+              for i in {1..3}; do haxelib --always install $lib_name && break || sleep 2; done
+              for i in {1..3}; do haxelib --always update $lib_name && break  || sleep 2; done
+            fi
+            echo "::endgroup::"
+          done
+        fi
+
+        if [[ -f haxelib.json ]]; then
+          haxelib dev $(yq e ".name" haxelib.json) .
+        fi
+
+    - name: Create output dir '${{ inputs.output-dir }}'
+      run: mkdir -p "${{ inputs.output-dir }}"
+
+
+    ##################################################
+    # Cache Update
+    # See https://github.com/actions/cache/issues/342
+    ##################################################
+    - name: "Haxe Cache: Delete Previous"
+      if: ${{ steps.cache-restore.outputs.cache-hit && !env.ACT }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh extension install actions/gh-actions-cache || true
+        gh actions-cache delete ${{ steps.cache-restore.outputs.cache-matched-key }} --confirm || true
+
+    - name: "Haxe Cache: Update"
+      uses: actions/cache/save@v3
+      if: ${{ always() && !cancelled() && !env.ACT }} # save cache even fails
+      with:
+        path: |
+          ${{ runner.tool_cache }}/haxe/lib
+          ${{ runner.tool_cache }}/yq
+        key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+
+
+    ##################################################
+    # Tests
+    ##################################################
+    - name: Show environment variables
+      run: env | sort
+
+    - name: Test [neko]
+      if: ${{ env.TEST_NEKO != 'false' }}
+      run:  |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_NEKO != "true" ]] && hxmlFile=$TEST_NEKO || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -neko ${{ inputs.output-dir }}/tests.n
+        neko ${{ inputs.output-dir }}/tests.n
+
+    - name: Test [hl]
+      if: ${{ env.TEST_HL != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_HL != "true" ]] && hxmlFile=$TEST_HL || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -hl ${{ inputs.output-dir }}/tests.hl
+        hl ${{ inputs.output-dir }}/tests.hl
+
+    - name: Test [eval]
+      if: ${{ env.TEST_EVAL != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_EVAL != "true" ]] && hxmlFile=$TEST_EVAL || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -D eval-stack --interp
+
+    - name: Test [flash]
+      if: ${{ env.TEST_FLASH != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_FLASH != "true" ]] && hxmlFile=$TEST_FLASH || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile --swf ${{ inputs.output-dir }}/tests.swf
+
+        # workaround for random "Application crashed with an unhandled SIGSEGV"
+        for i in {1..10}; do
+          echo "$i. attempt..."
+          rm -f ${{ steps.setup-haxe-targets.output.flash-log }}
+          tail --follow=name --retry "${{ steps.setup-haxe-targets.output.flash-log }}" 2>/dev/null &
+          xvfb-run -e /dev/null -a --server-args="-ac -screen 0 1024x768x24 +extension RANDR" flashplayerdebugger ${{ inputs.output-dir }}/tests.swf && break || sleep 2
+          ps -efww | grep "[t]ail ${{ steps.setup-haxe-targets.output.flash-log }}" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+        done
+
+    - name: Test [java]
+      if: ${{ env.TEST_JAVA != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_JAVA != "true" ]] && hxmlFile=$TEST_JAVA || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -java ${{ inputs.output-dir }}
+        java -jar ${{ inputs.output-dir }}/*.jar
+
+    - name: Test [jvm]
+      if: ${{ env.TEST_JVM != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_JVM != "true" ]] && hxmlFile=$TEST_JVM || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -D jvm -java ${{ inputs.output-dir }}
+        java -jar ${{ inputs.output-dir }}/*.jar
+
+    - name: Test [lua]
+      if: ${{ env.TEST_LUA != 'false' }}
+      continue-on-error: ${{ runner.os != 'Linux' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_LUA != "true" ]] && hxmlFile=$TEST_LUA || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -lua ${{ inputs.output-dir }}/tests.lua
+        lua ${{ inputs.output-dir }}/tests.lua
+
+    - name: Test [node]
+      if: ${{ env.TEST_NODE != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_NODE != "true" ]] && hxmlFile=$TEST_NODE || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -lib hxnodejs -D nodejs -js ${{ inputs.output-dir }}/tests.js
+        node ${{ inputs.output-dir }}/tests.js
+
+    - name: Test [php]
+      if: ${{ env.TEST_PHP != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_PHP != "true" ]] && hxmlFile=$TEST_PHP || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -php ${{ inputs.output-dir }}/php
+        php ${{ inputs.output-dir }}/php/index.php
+
+    - name: Test [python]
+      if: ${{ env.TEST_PYTHON != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_PYTHON != "true" ]] && hxmlFile=$TEST_PYTHON || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -python ${{ inputs.output-dir }}/tests.py
+        python ${{ inputs.output-dir }}/tests.py
+
+    - name: Test [cs]
+      if: ${{ env.TEST_CS != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_CS != "true" ]] && hxmlFile=$TEST_CS || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -cs ${{ inputs.output-dir }}/cs
+        mono ${{ inputs.output-dir }}/cs/bin/*.exe
+
+    - name: Test [cpp] # testing C++ as last since it takes the longest to build
+      if: ${{ env.TEST_CPP != 'false' }}
+      run: |
+        set -eux
+        rm -rf ${{ inputs.output-dir }}/*
+        [[ $TEST_CPP != "true" ]] && hxmlFile=$TEST_CPP || hxmlFile="${{ inputs.hxml-file }}"
+        haxe $hxmlFile -cpp ${{ inputs.output-dir }}/cpp
+        if [[ $OSTYPE == "darwin"* ]]; then
+          executableFilterFlag="-perm +111"
+        else
+          executableFilterFlag="-executable"
+        fi
+        $(find ${{ inputs.output-dir }}/cpp -maxdepth 1 $executableFilterFlag -type f)
