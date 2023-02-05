@@ -55,6 +55,8 @@ jobs:
       haxe-version: ${{ matrix.haxe }}
       hxml-file: myconfig.hxml # default is "tests.hxml"
       haxe-libs: hx3compat hscript
+
+      # by default all are set to false:
       test-cpp: true
       test-cs: true
       test-eval: true
@@ -67,6 +69,17 @@ jobs:
       test-node: true
       test-php: true
       test-python: true
+
+      before-tests: |
+        echo "Preparing tests..."
+
+      after-tests: |
+        case "$GITHUB_JOB_STATUS" in
+          success)   echo "Sending success report..." ;;
+          failure)   echo "Sending failure report..." ;;
+          cancelled) echo "Nothing to do, job cancelled" ;;
+          *)         echo "ERROR: Unexpected job status [$GITHUB_JOB_STATUS]"; exit 1 ;;
+        esac
 ```
 
 ### <a name="test-with-haxe-action"></a>Build/test using the `test-with-haxe` composite action
@@ -102,6 +115,8 @@ jobs:
         haxe-version: ${{ matrix.haxe }}
         hxml-file: myconfig.hxml # default is "tests.hxml"
         haxe-libs: hx3compat hscript
+
+        # by default all are set to false:
         test-cpp: true
         test-cs: true
         test-eval: true

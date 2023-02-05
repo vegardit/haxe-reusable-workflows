@@ -26,6 +26,11 @@ on:
       test-php:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
       test-python: { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
 
+      before-tests:       { required: false, type: string, description: "a bash script to be executed before the first test" }
+      #before-tests-shell: { default: "bash", type: string, description: "shell to be used to esecute the before-tests script" }
+      after-tests:        { required: false, type: string, description: "a bash script to be executed after the last test" }
+      #after-tests-shell:  { default: "bash", type: string, description: "shell to be used to esecute the after-tests script" }
+
 defaults:
   run:
     shell: bash
@@ -206,12 +211,20 @@ jobs:
           ${{ runner.tool_cache }}/yq
         key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
+    - name: "Before Tests: Custom Bash script"
+      if: ${{ inputs.before-tests }}
+      #shell: ${{ inputs.before-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+      run: ${{ inputs.before-tests }}
+
 
     ##################################################
     # Tests
     ##################################################
     - name: Show environment variables
       run: env | sort
+
 
     - name: Test [neko]
       if: ${{ env.TEST_NEKO != 'false' }}
@@ -333,3 +346,11 @@ jobs:
           executableFilterFlag="-executable"
         fi
         $(find ${{ inputs.output-dir }}/cpp -maxdepth 1 $executableFilterFlag -type f)
+
+    - name: "After Tests: Custom Bash script"
+      if: ${{ always() && inputs.after-tests }}
+      #shell: ${{ inputs.after-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+        GITHUB_JOB_STATUS: ${{ job.status }}
+      run: ${{ inputs.after-tests }}

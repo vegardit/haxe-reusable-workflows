@@ -48,3 +48,14 @@ jobs:
       test-node: true
       test-php: true
       test-python: true
+
+      before-tests: |
+        echo "Preparing tests..."
+
+      after-tests: |
+        case "$GITHUB_JOB_STATUS" in
+          success)   echo "Job success" ;;
+          failure)   echo "Job failure" ;;
+          cancelled) echo "Job cancelled." ;;
+          *)         echo "ERROR: Unexpected job status $GITHUB_JOB_STATUS"; exit 1 ;;
+        esac
