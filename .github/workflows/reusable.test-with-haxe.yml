@@ -72,7 +72,7 @@ jobs:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
           ${{ runner.tool_cache }}/yq
-        key: ${{ runner.os }}-haxe-${{ inputs.haxe-version }}
+        key: ${{ runner.os }}-haxelibs-${{ inputs.haxe-version }}
 
 
     ##################################################
