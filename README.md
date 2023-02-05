@@ -18,7 +18,8 @@
 ## <a name="what-is-it"></a>What is it?
 
 A repository with [Reusable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows) and
-[composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) to build/test Haxe programs using Github Actions.
+[composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) to build/test Haxe programs using Github Actions
+on Ubuntu, MacOS, or Windows.
 
 The workflows/actions do the heavy lifting of installing compatible versions of required compiler targets with the correct configuration/libraries depending on the runner OS and the desired Haxe version.
 
