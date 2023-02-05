@@ -17,11 +17,12 @@
 
 ## <a name="what-is-it"></a>What is it?
 
-[Reusable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows) and
-[composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) to be used when building/testing Haxe programs with Github Actions.
+A repository with [Reusable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows) and
+[composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) to build/test Haxe programs using Github Actions.
 
-It does the heavy lifting of installing the compatible versions of required compiler targets with the correct configuration depending on the runner OS and the Haxe version.
-For example correctly installing Lua on Windows runners with the required Lua libraries is quite a tough cookie.
+The workflows/actions do the heavy lifting of installing compatible versions of required compiler targets with the correct configuration/libraries depending on the runner OS and the desired Haxe version.
+
+For faster re-runs caching of haxe libraries and other components is configured.
 
 
 ## Usage <a name="usage"></a>Usage
@@ -56,6 +57,7 @@ jobs:
       test-cpp: true
       test-cs: true
       test-eval: true
+      test-flash: true
       test-hl: true
       test-java: true
       test-jvm: true
@@ -102,6 +104,7 @@ jobs:
         test-cpp: true
         test-cs: true
         test-eval: true
+        test-flash: true
         test-hl: true
         test-java: true
         test-jvm: true
