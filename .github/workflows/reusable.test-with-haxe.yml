@@ -38,6 +38,8 @@ defaults:
 jobs:
   test-with-haxe:
     runs-on: ${{ inputs.runner-os }}
+    permissions:
+      id-token: write # currently required to determine job_workflow_ref / job_workflow_sha
 
     steps:
     - name: Process input parameter
@@ -76,46 +78,70 @@ jobs:
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
-          ${{ runner.tool_cache }}/yq
+          ${{ runner.tool_cache }}/jq
         key: ${{ runner.os }}-haxelibs-${{ inputs.haxe-version }}
 
 
     ##################################################
     # Install software
     ##################################################
-    - name: "Install: yq" # https://github.com/mikefarah/yq
+    - name: "Install: jq" # https://github.com/stedolan/jq
       run: |
         set -euo pipefail
 
-        if ! hash yq 2>/dev/null; then
+        if ! hash jq 2>/dev/null; then
           case "${{ runner.os }}" in
-            Windows) yqHome="$(cygpath '${{ runner.tool_cache }}')/yq" ;;
-            *)       yqHome="${{ runner.tool_cache }}/yq" ;;
+            Linux)
+              jqHome="${{ runner.tool_cache }}/jq"
+              jq_source_exe="jq-linux64"
+              jq_target_exe=jq
+              ;;
+            macOS)
+              jqHome="${{ runner.tool_cache }}/jq"
+              jq_source_exe="jq-osx.amd64"
+              jq_target_exe=jq
+              ;;
+            Windows)
+              jqHome="$(cygpath '${{ runner.tool_cache }}')/jq"
+              jq_source_exe="jq-win64.exe"
+              jq_target_exe=jq.exe
+              ;;
           esac
-          if [[ ! -f $yqHome/yq* ]]; then
-            yq_version=$(curl -sSfL -o /dev/null -w "%{url_effective}\n" https://github.com/mikefarah/yq/releases/latest | grep -o '[^/]*$')
-
-            case "${{ runner.os }}" in
-              Linux)   yq_source_exe="yq_linux_amd64";       yq_target_exe=yq ;;
-              macOS)   yq_source_exe="yq_darwin_amd64";      yq_target_exe=yq ;;
-              Windows) yq_source_exe="yq_windows_amd64.exe"; yq_target_exe=yq.exe ;;
-            esac
-            yq_download_url="https://github.com/mikefarah/yq/releases/download/$yq_version/$yq_source_exe"
-            echo "Downloading [$yq_download_url]..."
-            mkdir -p $yqHome
-            curl -fsSL --retry 3 --retry-delay 5 -o $yqHome/$yq_target_exe "$yq_download_url"
-            chmod 777 $yqHome/$yq_target_exe
+          if [[ ! -f $jqHome/$jq_target_exe ]]; then
+            jq_version=$(curl -sSfL -o /dev/null -w "%{url_effective}\n" https://github.com/stedolan/jq/releases/latest | grep -o '[^/]*$')
+            jq_download_url="https://github.com/stedolan/jq/releases/download/$jq_version/$jq_source_exe"
+            echo "Downloading [$jq_download_url]..."
+            mkdir -p $jqHome
+            curl -fsSL --retry 3 --retry-delay 5 -o $jqHome/$jq_target_exe "$jq_download_url"
           fi
-
-          echo '${{ runner.tool_cache }}/yq' >> $GITHUB_PATH
+          chmod 777 $jqHome/$jq_target_exe
+          echo '${{ runner.tool_cache }}/jq' >> $GITHUB_PATH
         fi
 
-    - name: "Test: yq"
-      run: yq --version
+    - name: "Test: jq"
+      run: jq --version
+
+
+    # workaround to determine job_workflow_ref / job_workflow_sha to run the 'setup-haxe-targets' action from the same branch as the reusable workflow
+    # - https://stackoverflow.com/questions/71046096/reusable-workflows-with-local-actions
+    # - https://github.com/community/community/discussions/31054
+    - name: "Determine reusable workflow repo"
+      id: job_workflow_info
+      run: |
+        id_token_payload=$(jq -R 'split(".") | .[1] | @base64d | fromjson' <<< "$ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+        echo "repo=$(jq -r '.oidc_extra | fromjson | .job_workflow_ref | split("/")[0:2] | join("/")' <<< $id_token_payload)" >> $GITHUB_OUTPUT
+        echo  "ref=$(jq -r ".oidc_extra | fromjson | .job_workflow_sha" <<< $id_token_payload)" >> $GITHUB_OUTPUT
+
+    - name: "Git checkout workflow repo"
+      uses: actions/checkout@v3
+      with:
+        path: ./.github/haxe-reusable-workflows
+        repository: ${{ steps.job_workflow_info.outputs.repo }}
+        ref: ${{ steps.job_workflow_info.outputs.ref }}
 
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets
-      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe-targets@v1
+      uses: ./.github/haxe-reusable-workflows/.github/actions/setup-haxe-targets
       with:
         setup-cpp:    ${{ env.TEST_CPP    != 'false' }}
         setup-cs:     ${{ env.TEST_CS     != 'false' }}
@@ -183,7 +209,7 @@ jobs:
         fi
 
         if [[ -f haxelib.json ]]; then
-          haxelib dev $(yq e ".name" haxelib.json) .
+          haxelib dev $(jq -r .name haxelib.json) .
         fi
 
     - name: Create output dir '${{ inputs.output-dir }}'
@@ -208,7 +234,7 @@ jobs:
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
-          ${{ runner.tool_cache }}/yq
+          ${{ runner.tool_cache }}/jq
         key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
     - name: "Before Tests: Custom Bash script"
