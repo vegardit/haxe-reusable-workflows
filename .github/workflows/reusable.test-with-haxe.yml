@@ -26,6 +26,9 @@ on:
       test-php:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
       test-python: { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
 
+      timeout-minutes-test: { default: 10, type: number, description: "The maximum number of minutes a test can run before it is terminated." }
+      timeout-minutes:      { default: 60, type: number, description: "The maximum number of minutes the build job shall run." }
+
       before-tests:       { required: false, type: string, description: "a bash script to be executed before the first test" }
       #before-tests-shell: { default: "bash", type: string, description: "shell to be used to esecute the before-tests script" }
       after-tests:        { required: false, type: string, description: "a bash script to be executed after the last test" }
@@ -38,6 +41,7 @@ defaults:
 jobs:
   test-with-haxe:
     runs-on: ${{ inputs.runner-os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       id-token: write # currently required to determine job_workflow_ref / job_workflow_sha
 
@@ -254,6 +258,7 @@ jobs:
 
     - name: Test [neko]
       if: ${{ env.TEST_NEKO != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run:  |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -263,6 +268,7 @@ jobs:
 
     - name: Test [hl]
       if: ${{ env.TEST_HL != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -272,6 +278,7 @@ jobs:
 
     - name: Test [eval]
       if: ${{ env.TEST_EVAL != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -280,6 +287,7 @@ jobs:
 
     - name: Test [flash]
       if: ${{ env.TEST_FLASH != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -297,6 +305,7 @@ jobs:
 
     - name: Test [java]
       if: ${{ env.TEST_JAVA != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -306,6 +315,7 @@ jobs:
 
     - name: Test [jvm]
       if: ${{ env.TEST_JVM != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -316,6 +326,7 @@ jobs:
     - name: Test [lua]
       if: ${{ env.TEST_LUA != 'false' }}
       continue-on-error: ${{ runner.os != 'Linux' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -325,6 +336,7 @@ jobs:
 
     - name: Test [node]
       if: ${{ env.TEST_NODE != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -334,6 +346,7 @@ jobs:
 
     - name: Test [php]
       if: ${{ env.TEST_PHP != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -343,6 +356,7 @@ jobs:
 
     - name: Test [python]
       if: ${{ env.TEST_PYTHON != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -352,6 +366,7 @@ jobs:
 
     - name: Test [cs]
       if: ${{ env.TEST_CS != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
@@ -361,6 +376,7 @@ jobs:
 
     - name: Test [cpp] # testing C++ as last since it takes the longest to build
       if: ${{ env.TEST_CPP != 'false' }}
+      timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
         rm -rf ${{ inputs.output-dir }}/*

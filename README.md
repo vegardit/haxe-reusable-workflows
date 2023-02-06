@@ -70,6 +70,9 @@ jobs:
       test-php: true
       test-python: true
 
+      timeout-minutes: 30     # max. duration of the workflow, default is 60
+      timeout-minutes-test: 5 # max. duration per target test, default is 10
+
       before-tests: |
         echo "Preparing tests..."
 
