@@ -61,7 +61,7 @@ runs:
     # Cache Restore
     # See https://github.com/actions/cache/issues/342
     ##################################################
-    - name: "Haxe Cache: Restore"
+    - name: "Haxe Libs Cache: Restore"
       id: cache-restore
       if: ${{ !env.ACT }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
@@ -129,7 +129,7 @@ runs:
       with:
         haxe-version: ${{ inputs.haxe-version }}
 
-    - name: "Test: Haxe"
+    - name: "Verify: Haxe"
       shell: bash
       run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
 
@@ -196,7 +196,7 @@ runs:
     # Cache Update
     # See https://github.com/actions/cache/issues/342
     ##################################################
-    - name: "Haxe Cache: Delete Previous"
+    - name: "Haxe Libs Cache: Delete Previous"
       if: ${{ steps.cache-restore.outputs.cache-hit && !env.ACT }}
       env:
         GH_TOKEN: ${{ github.token }}
@@ -205,7 +205,7 @@ runs:
         gh extension install actions/gh-actions-cache || true
         gh actions-cache delete ${{ steps.cache-restore.outputs.cache-matched-key }} --confirm || true
 
-    - name: "Haxe Cache: Update"
+    - name: "Haxe Libs Cache: Update"
       uses: actions/cache/save@v3
       if: ${{ always() && !cancelled() && !env.ACT }} # save cache even fails
       with:

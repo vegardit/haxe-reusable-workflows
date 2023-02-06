@@ -28,10 +28,10 @@ runs:
     - name: Process input parameter
       shell: bash
       run: |
-        # Convert inputs that can be passed as boolean or string to strings so we can do
+        # Convert inputs that might be passed as boolean or string to string so we can safely do
         # {{ env.SETUP_CPP == 'true' }} instead of {{ inputs.setup-cpp == 'true' || inputs.setup-cpp == true }}
 
-        # we need python when installing lua
+        # we need Python to install Lua
         if [[ "${{ inputs.setup-lua }}" != "false" && "${{ inputs.setup-python }}" == "false" ]]; then
           SETUP_PYTHON="true"
         else
@@ -156,7 +156,7 @@ runs:
         esac
         echo "::endgroup::"
 
-    - name: "Test: C# (mono)"
+    - name: "Verify: C# (mono)"
       if: ${{ env.SETUP_CS == 'true' }}
       shell: bash
       run: mono --version
@@ -272,7 +272,7 @@ runs:
         esac
         echo "::endgroup::"
 
-    - name: "Test: Hashlink"
+    - name: "Verify: Hashlink"
       if: ${{ env.SETUP_HL == 'true' }}
       shell: bash
       run: hl --version
@@ -284,7 +284,7 @@ runs:
         distribution: 'temurin'
         java-version: ${{ env.SETUP_JAVA == 'true' && '11' || env.SETUP_JAVA }}
 
-    - name: "Test: Java"
+    - name: "Verify: Java"
       if: ${{ env.SETUP_JAVA != 'false' }}
       shell: bash
       run: java -version
@@ -305,7 +305,7 @@ runs:
           mklink "%pythonLocation%\python3.exe" "%pythonLocation%\python.exe"
         )
 
-    - name: "Test: Python"
+    - name: "Verify: Python"
       if: ${{ env.SETUP_PYTHON != 'false' }}
       shell: bash
       run: python --version
@@ -393,7 +393,7 @@ runs:
             echo "::endgroup::"
             ;;
 
-          *)
+          *) # Linux/MacOS
             echo "::group::Install: hererocks"
               if ! hash hererocks 2>/dev/null; then
                 case "${{ runner.os }}" in
@@ -436,7 +436,7 @@ runs:
           echo "::endgroup::"
         done
 
-    - name: "Test: Lua"
+    - name: "Verify: Lua"
       if: ${{ env.SETUP_LUA != 'false' }}
       shell: bash
       run: |
@@ -450,7 +450,7 @@ runs:
       with:
         node-version: ${{ env.SETUP_NODE == 'true' && 'lts/*' || env.SETUP_NODE }}
 
-    - name: "Test: Node"
+    - name: "Verify: Node"
       if: ${{ env.SETUP_NODE != 'false' }}
       shell: bash
       run: node --version
@@ -465,7 +465,7 @@ runs:
         php-version: ${{ env.SETUP_PHP == 'true' && '7.4' || env.SETUP_PHP }}
         extensions: mbstring, xml
 
-    - name: "Test: PHP"
+    - name: "Verify: PHP"
       if: ${{ env.SETUP_PHP != 'false' }}
       shell: bash
       run: php --version
