@@ -37,7 +37,7 @@ class Main {
 
   #if flash
     @:keep
-    static __static_init = {
+    static var __static_init = {
       haxe.Log.trace = function(v:Dynamic, ?pos:haxe.PosInfos):Void //
         flash.Lib.trace(pos == null ? '$v' : '${pos.fileName}:${pos.lineNumber}: $v');
     }
