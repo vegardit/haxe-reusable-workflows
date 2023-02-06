@@ -24,6 +24,11 @@ inputs:
   test-php:    { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
   test-python: { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
 
+  before-tests:       { required: false, description: "a bash script to be executed before the first test" }
+  #before-tests-shell: { default: "bash", description: "shell to be used to esecute the before-tests script" }
+  after-tests:        { required: false, description: "a bash script to be executed after the last test" }
+  #after-tests-shell:  { default: "bash", description: "shell to be used to esecute the after-tests script" 
+
   setup-cpp:    { default: "true", description: "true or false" }
   setup-cs:     { default: "true", description: "true or false" }
   setup-flash:  { default: "true", description: "true or false" }
@@ -214,6 +219,13 @@ runs:
           ${{ runner.tool_cache }}/yq
         key: ${{ steps.cache-restore.outputs.cache-primary-key }}
 
+    - name: "Before Tests: Custom Bash script"
+      if: ${{ inputs.before-tests }}
+      shell: bash # ${{ inputs.before-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+      run: ${{ inputs.before-tests }}
+
 
     ##################################################
     # Tests
@@ -377,3 +389,11 @@ runs:
         fi
         $(find ${{ inputs.output-dir }}/cpp -maxdepth 1 $executableFilterFlag -type f)
         echo "::endgroup::"
+
+    - name: "After Tests: Custom Bash script"
+      if: ${{ always() && inputs.after-tests }}
+      shell: bash # ${{ inputs.after-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+        GITHUB_JOB_STATUS: ${{ job.status }}
+      run: ${{ inputs.after-tests }}

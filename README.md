@@ -54,28 +54,30 @@ jobs:
       runner-os: ${{ matrix.os }}
       haxe-version: ${{ matrix.haxe }}
       hxml-file: myconfig.hxml # default is "tests.hxml"
-      haxe-libs: hx3compat hscript
+      haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
       # by default all are set to false:
-      test-cpp: true
-      test-cs: true
-      test-eval: true
-      test-flash: true
-      test-hl: true
-      test-java: true
-      test-jvm: true
-      test-lua: true
-      test-neko: true
-      test-node: true
-      test-php: true
+      test-cpp:    true
+      test-cs:     true
+      test-eval:   true
+      test-flash:  ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+      test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
+      test-java:   true
+      test-jvm:    true
+      test-lua:    true
+      test-neko:   true
+      test-node:   true
+      test-php:    true
       test-python: true
 
       timeout-minutes: 30     # max. duration of the workflow, default is 60
       timeout-minutes-test: 5 # max. duration per target test, default is 10
 
+      # optional bash script to be executed after compiler targets are installed and before target tests are executed
       before-tests: |
         echo "Preparing tests..."
 
+      # optional bash script to be executed after tests were executed
       after-tests: |
         case "$GITHUB_JOB_STATUS" in
           success)   echo "Sending success report..." ;;
@@ -107,6 +109,7 @@ jobs:
         haxe:
         - latest
         - 4.2.5
+        - 3.4.7
 
     steps:
     - name: Git Checkout
@@ -117,21 +120,34 @@ jobs:
       with:
         haxe-version: ${{ matrix.haxe }}
         hxml-file: myconfig.hxml # default is "tests.hxml"
-        haxe-libs: hx3compat hscript
+        haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
         # by default all are set to false:
-        test-cpp: true
-        test-cs: true
-        test-eval: true
-        test-flash: true
-        test-hl: true
-        test-java: true
-        test-jvm: true
-        test-lua: true
-        test-neko: true
-        test-node: true
-        test-php: true
+        test-cpp:    true
+        test-cs:     true
+        test-eval:   true
+        test-flash:  ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+        test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
+        test-java:   true
+        test-jvm:    true
+        test-lua:    true
+        test-neko:   true
+        test-node:   true
+        test-php:    true
         test-python: true
+
+      # optional bash script to be executed after compiler targets are installed and before target tests are executed
+      before-tests: |
+        echo "Preparing tests..."
+
+      # optional bash script to be executed after tests were executed
+      after-tests: |
+        case "$GITHUB_JOB_STATUS" in
+          success)   echo "Sending success report..." ;;
+          failure)   echo "Sending failure report..." ;;
+          cancelled) echo "Nothing to do, job cancelled" ;;
+          *)         echo "ERROR: Unexpected job status [$GITHUB_JOB_STATUS]"; exit 1 ;;
+        esac
 
     # other steps ...
 ```
@@ -159,6 +175,7 @@ jobs:
         haxe:
         - latest
         - 4.2.5
+        - 3.4.7
 
     steps:
     - name: Git Checkout
