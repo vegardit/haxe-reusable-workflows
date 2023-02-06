@@ -292,15 +292,23 @@ jobs:
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_FLASH != "true" ]] && hxmlFile=$TEST_FLASH || hxmlFile="${{ inputs.hxml-file }}"
-        haxe $hxmlFile --swf ${{ inputs.output-dir }}/tests.swf
+        haxe $hxmlFile -swf ${{ inputs.output-dir }}/tests.swf
 
         # workaround for random "Application crashed with an unhandled SIGSEGV"
-        for i in {1..10}; do
+        max_attempts=10
+        for i in $(seq 1 $max_attempts); do
           echo "$i. attempt..."
-          rm -f ${{ steps.setup-haxe-targets.output.flash-log }}
-          tail --follow=name --retry "${{ steps.setup-haxe-targets.output.flash-log }}" 2>/dev/null &
-          xvfb-run -e /dev/null -a --server-args="-ac -screen 0 1024x768x24 +extension RANDR" flashplayerdebugger ${{ inputs.output-dir }}/tests.swf && break || sleep 2
-          ps -efww | grep "[t]ail ${{ steps.setup-haxe-targets.output.flash-log }}" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+          rm -f ${{ steps.setup-haxe-targets.outputs.flash-log }}
+          tail --follow=name --retry "${{ steps.setup-haxe-targets.outputs.flash-log }}" 2>/dev/null &
+          "${{ steps.setup-haxe-targets.outputs.flash-cmd }}" "${{ inputs.output-dir }}/tests.swf" && flash_exit_code=0 || flash_exit_code=1
+          ps aux | grep "[t]ail --follow=name --retry" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+          if [[ $flash_exit_code -eq 0 ]]; then
+            break
+          elif [[ $i -eq $max_attempts ]]; then
+            exit 1
+          else
+            sleep 2
+          fi
         done
 
     - name: Test [java]

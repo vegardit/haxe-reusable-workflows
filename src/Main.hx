@@ -30,8 +30,7 @@ class Main {
         }
       #end
     #elseif flash
-      // using a delay to give the logger a chance to flush to disk
-      haxe.Timer.delay(() -> flash.system.System.exit(exitCode), 2000);
+      flash.system.System.exit(exitCode);
     #end
   }
 

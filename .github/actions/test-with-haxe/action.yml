@@ -39,6 +39,10 @@ inputs:
   setup-php:    { default: "true", description: "true or false or PHP version" }
   setup-python: { default: "true", description: "true or false or Python version" }
 
+  # internal:
+  haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
+  haxe-reusable-workflows-version: { default: "v1", description: "Version of the setup-haxe-targets action" }
+
 runs:
   using: "composite"
   steps:
@@ -119,9 +123,21 @@ runs:
       run: jq --version
 
 
+
+    # workaround to determine job_workflow_ref / job_workflow_sha to run the 'setup-haxe-targets' action from the same branch as the reusable workflow
+    # - https://stackoverflow.com/questions/71046096/reusable-workflows-with-local-actions
+    # - https://github.com/community/community/discussions/31054
+
+    - name: "Git checkout workflow repo"
+      uses: actions/checkout@v3
+      with:
+        path: ./.github/haxe-reusable-workflows
+        repository: ${{ inputs.haxe-reusable-workflows-repo }}
+        ref: ${{ inputs.haxe-reusable-workflows-version }}
+
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets
-      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe-targets@v1
+      uses: ./.github/haxe-reusable-workflows/.github/actions/setup-haxe-targets
       with:
         setup-cpp:    ${{ env.TEST_CPP    != 'false' }}
         setup-cs:     ${{ env.TEST_CS     != 'false' }}
@@ -236,7 +252,10 @@ runs:
     ##################################################
     - name: Show environment variables
       shell: bash
-      run: env | sort
+      run: |
+        echo "::group::Show environment variables"
+        env | sort
+        echo "::endgroup::"
 
     - name: Test [neko]
       if: ${{ env.TEST_NEKO != 'false' }}
@@ -281,15 +300,23 @@ runs:
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_FLASH != "true" ]] && hxmlFile=$TEST_FLASH || hxmlFile="${{ inputs.hxml-file }}"
-        haxe $hxmlFile --swf ${{ inputs.output-dir }}/tests.swf
+        haxe $hxmlFile -swf ${{ inputs.output-dir }}/tests.swf
 
         # workaround for random "Application crashed with an unhandled SIGSEGV"
-        for i in {1..10}; do
+        max_attempts=10
+        for i in $(seq 1 $max_attempts); do
           echo "$i. attempt..."
-          rm -f ${{ steps.setup-haxe-targets.output.flash-log }}
-          tail --follow=name --retry "${{ steps.setup-haxe-targets.output.flash-log }}" 2>/dev/null &
-          xvfb-run -e /dev/null -a --server-args="-ac -screen 0 1024x768x24 +extension RANDR" flashplayerdebugger ${{ inputs.output-dir }}/tests.swf && break || sleep 2
-          ps -efww | grep "[t]ail ${{ steps.setup-haxe-targets.output.flash-log }}" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+          rm -f ${{ steps.setup-haxe-targets.outputs.flash-log }}
+          tail --follow=name --retry "${{ steps.setup-haxe-targets.outputs.flash-log }}" 2>/dev/null &
+          "${{ steps.setup-haxe-targets.outputs.flash-cmd }}" "${{ inputs.output-dir }}/tests.swf" && flash_exit_code=0 || flash_exit_code=1
+          ps aux | grep "[t]ail --follow=name --retry" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+          if [[ $flash_exit_code -eq 0 ]]; then
+            break
+          elif [[ $i -eq $max_attempts ]]; then
+            exit 1
+          else
+            sleep 2
+          fi
         done
         echo "::endgroup::"
 

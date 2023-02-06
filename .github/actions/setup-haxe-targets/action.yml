@@ -17,9 +17,12 @@ inputs:
   setup-python: { default: "true", description: "true or false or Python version" }
 
 outputs:
+  flash-cmd:
+    description: "Command to run the flashdebugger"
+    value: ${{ steps.SETUP-FLASH.outputs.flash-cmd }}
   flash-log:
     description: "Path to the flash debugger log file"
-    value: ${{ steps.setup-flash.outputs.flash-log }}
+    value: ${{ steps.SETUP-FLASH.outputs.flash-log }}
 
 runs:
   using: "composite"
@@ -55,7 +58,7 @@ runs:
     # See https://github.com/actions/cache/issues/342
     ##################################################
     - name: "Haxe Targets Cache: Restore"
-      id: cache-restore
+      id: HAXE-TARGETS-CACHE-RESTORE
       if: ${{ !env.ACT }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
       with:
@@ -63,16 +66,51 @@ runs:
           ${{ runner.tool_cache }}/haxe/targets
         key: ${{ runner.os }}-haxe-targets
 
+    - name: "Haxe Targets Cache: Init Root Path"
+      id: HAXE-TARGETS-CACHE
+      shell: bash
+      run: |
+        echo "::group::Haxe Targets Cache: Init Root Path"
+        set -euo pipefail
+
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          path_nix="$(cygpath '${{ runner.tool_cache }}')/haxe/targets"
+          echo 'path_win=${{ runner.tool_cache }}\haxe\targets' | tee -a $GITHUB_OUTPUT
+        else
+          path_nix="${{ runner.tool_cache }}/haxe/targets"
+        fi
+        mkdir -p "$path_nix"
+        echo "path_nix=$path_nix" | tee -a $GITHUB_OUTPUT
+
+        pushd "$path_nix"
+          # create a quick hashsum based on file names and file size
+          case "${{ runner.os }}" in
+            macOS) echo "initial_hash=$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" | tee -a $GITHUB_OUTPUT ;;
+            *)     echo "initial_hash=$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" | tee -a $GITHUB_OUTPUT ;;
+          esac
+        popd
+
+        ls -l $path_nix
+        echo "::endgroup::"
+
 
     - name: "Linux: Configure APT"
       if: runner.os == 'Linux'
       shell: bash
       run: |
+        echo "::group::Linux: Configure APT"
+        set -euo pipefail
+
         # Workaround to avoid sporadic connectivity issues "Could not connect to azure.archive.ubuntu.com:80"
         # see https://github.com/actions/virtual-environments/issues/675
         echo 'APT::Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-acquire-retries
         if ! curl --max-time 3 --output /dev/null --silent --head --fail "http://azure.archive.ubuntu.com/ubuntu/dists/"; then
           sudo sed -i 's/azure\.//' /etc/apt/sources.list
+
+          # Workaround for "Cannot initiate the connection to archive.ubuntu.com:80 (2620:2d:4000:1::16). - connect (101: Network is unreachable)"
+          if ! curl --max-time 3 --output /dev/null --silent --head --fail "http://archive.ubuntu.com/ubuntu/dists/"; then
+            echo 'Acquire::ForceIPv4 "true";' | sudo tee /etc/apt/apt.conf.d/81-acquire-force-ips
+          fi
         fi
 
         # refresh pkg cache if it does not exist or is older than 60min.
@@ -80,6 +118,8 @@ runs:
         if [[ ! -e /var/lib/apt/lists/partial ]] || [[ $(( $(date +%s) - $(sudo date +%s -r /var/lib/apt/lists/partial) )) -gt 3600 ]]; then
            sudo apt-get update
         fi
+        echo "::endgroup::"
+
 
     - name: "MacOS: Update brew formulas"
       if: runner.os == 'macOS'
@@ -91,7 +131,8 @@ runs:
         HOMEBREW_NO_INSTALL_CLEANUP: "1"
         HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
       run: |
-        set -eu
+        echo "::group::MacOS: Update brew formulas"
+        set -euo pipefail
 
         echo "::group::brew update" && brew update && echo "::endgroup::"
         echo "::group::brew config" && brew config && echo "::endgroup::"
@@ -108,7 +149,21 @@ runs:
           /usr/local/bin/pydoc3 \
           /usr/local/bin/python3 \
           /usr/local/bin/python3-config
+        echo "::endgroup::"
 
+    - name: "MacOS: launch fontd"
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # Workaround for:
+        # XType: failed to connect - Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.fonts was invalidated: failed at lookup with error 3 - No such process." 
+        #        UserInfo={NSDebugDescription=The connection to service named com.apple.fonts was invalidated: failed at lookup with error 3 - No such process.}
+        # Font server protocol version mismatch (expected:5 got:0), falling back to local fonts
+        # XType: unable to make a connection to the font daemon!
+        # XType: XTFontStaticRegistry is enabled as fontd is not available.
+        if ! pgrep fontd; then
+          sudo launchctl load -w /System/Library/LaunchAgents/com.apple.fontd.useragent.plist
+        fi
 
     - name: "Install: C# (mono)"
       if: ${{ env.SETUP_CS == 'true' }}
@@ -140,14 +195,14 @@ runs:
             ;;
           Windows)
             if ! hash mono 2>/dev/null; then
-              monoMSICache="$(cygpath '${{ runner.tool_cache }}')/haxe/targets/mono.msi"
-              mkdir -p $(dirname $monoMSICache)
-              if [[ ! -f $monoMSICache ]]; then
-                curl -sSfL https://download.mono-project.com/archive/6.12.0/windows-installer/mono-6.12.0.190-x64-0.msi -o $monoMSICache
+              monoVersion="6.12.0.190"
+              monoMSI="${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}/mono-${monoVersion}.msi"
+              if [[ ! -f $monoMSI ]]; then
+                curl -sSfL https://download.mono-project.com/archive/${monoVersion%.*}/windows-installer/mono-${monoVersion}-x64-0.msi -o $monoMSI
               fi
               pushd $HOME
                 tail --follow=name --retry mono.log 2>/dev/null | dos2unix -f &
-                MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" cmd /c start /wait msiexec.exe /i "$(cygpath -w $monoMSICache)" /quiet /norestart /L*v mono.log
+                MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" cmd /c start /wait msiexec.exe /i "$(cygpath -w "$monoMSI")" /quiet /norestart /L*v mono.log
                 ps aux | grep "[t]ail --follow=name --retry mono.log" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
               popd
               echo "$(cygpath -w "$PROGRAMFILES/Mono/bin")" >> $GITHUB_PATH
@@ -164,7 +219,7 @@ runs:
 
     - name: "Install: Flash"
       if: ${{ env.SETUP_FLASH == 'true' }}
-      id: setup-flash
+      id: SETUP-FLASH
       shell: bash
       run: |
         echo "::group::Install: Flash"
@@ -172,49 +227,118 @@ runs:
 
         case "${{ runner.os }}" in
           Linux)
+            sudo apt-get install -y \
+              libcurl3-gnutls \
+              libglib2.0-0 \
+              libgtk2.0-0 \
+              libnss3 \
+              libx11-6 \
+              libxcursor1 \
+              libxext6 \
+              libxt6 \
+              xvfb
 
-            # Trust the current directory, so exit can be used
-            #flashHome="$HOME/.macromedia/Flash_Player"
-            flashHome="${{ runner.tool_cache }}/haxe/targets/flashplayer"
-            mkdir -p $(dirname $flashHome)
-            mkdir -m 777 -p "$flashHome/#Security/FlashPlayerTrust"
-            echo $(pwd) > "$flashHome/#Security/FlashPlayerTrust/github_actions.cfg"
-
-            # Configure trace logging
-            echo -e "ErrorReportingEnable=1\\nTraceOutputFileEnable=1" > $HOME/mm.cfg
-            mkdir -m 777 -p "$flashHome/Logs"
-            rm -f "$flashHome/Logs/flashlog.txt"
-            touch "$flashHome/Logs/flashlog.txt"
-
-            # install debugger if not already present
-            if [[ ! -e "$flashHome/flashplayerdebugger" ]]; then
-              sudo apt-get install -y \
-                libcurl3-gnutls \
-                libglib2.0-0 \
-                libgtk2.0-0 \
-                libnss3 \
-                libx11-6 \
-                libxcursor1 \
-                libxext6 \
-                libxt6 \
-                xvfb
-
-              latestMajorVersion=$(curl -sSfL http://fpdownload2.macromedia.com/get/flashplayer/update/current/xml/version_en_mac_pl.xml | grep -oP 'version="\K[0-9]+')
-              curl -sSfL "https://fpdownload.macromedia.com/pub/flashplayer/updaters/$latestMajorVersion/flash_player_sa_linux_debug.x86_64.tar.gz" \
-                | tar -xz -C "$flashHome" --wildcards "flashplayerdebugger"
-            fi
-
-            echo "$flashHome" >> $GITHUB_PATH
+            flash_lso_dir="$HOME/.macromedia/Flash_Player"
             echo "AUDIODEV=null" >> $GITHUB_ENV
-            echo "flash-log=$flashHome/Logs/flashlog.txt" >> $GITHUB_OUTPUT
+
+            pushd "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}"
+              if [[ ! -f flash_player_sa_linux_debug.x86_64.tar.gz ]]; then
+                #flashplayer_latest_major_version=$(curl -sSfL http://fpdownload2.macromedia.com/get/flashplayer/update/current/xml/version_en_mac_pl.xml | grep -oP 'version="\K[0-9]+')
+                flashplayer_latest_major_version=32
+                curl -sSfL "https://fpdownload.macromedia.com/pub/flashplayer/updaters/${flashplayer_latest_major_version}/flash_player_sa_linux_debug.x86_64.tar.gz" -o flash_player_sa_linux_debug.x86_64.tar.gz
+
+                # alternative:
+                # https://archive.org/download/flash32-5y5r/Flash/Lin/flash_player_sa_linux_debug.x86_64.tar.gz
+              fi
+
+              tar -C "$HOME" --wildcards flashplayerdebugger -xzf flash_player_sa_linux_debug.x86_64.tar.gz
+            popd
+
+              cat <<EOF > "$HOME/flashplayer.sh"
+        #!/bin/bash
+        set -eux
+        xvfb-run -e /dev/null \
+          -a --server-args="-ac -screen 0 1024x768x24 +extension RANDR" \
+          "$HOME/flashplayerdebugger" "\$@"
+        EOF
+            chmod 755 "$HOME/flashplayer.sh"
+            echo "flash-cmd=$HOME/flashplayer.sh" | tee -a $GITHUB_OUTPUT
             ;;
           macOS)
-            echo "WARNING: Don't know how to intall Flash Player on MacOS"
+              flash_lso_dir="$HOME/Library/Preferences/Macromedia/Flash Player"
+
+              # not sure if this is required:
+              #brew install xquartz --cask
+              #echo "/usr/X11/bin" >> $GITHUB_PATH
+              #echo "DISPLAY=:99" >> $GITHUB_ENV
+              #if ! pgrep Xvfb; then
+              #  sudo Xvfb :99 -ac -screen 0 1280x1024x24 +extension RANDR &
+              #fi
+
+              pushd "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}"
+                if [[ ! -f flashplayer_32_sa_debug.dmg ]]; then
+                  curl -sSfL "https://fpdownload.macromedia.com/pub/flashplayer/updaters/32/flashplayer_32_sa_debug.dmg" -o flashplayer_32_sa_debug.dmg
+ 
+                  # alternative:
+                  # https://archive.org/download/flash32-5y5r/Flash/Mac/flashplayer_32_sa_debug.dmg
+                  # https://github.com/ntkernel/flash/releases/download/32.0.0.403/flashplayer_32_sa_debug.dmg
+                fi
+
+                # specifying custom mount point to workaround "VMware Shared Folders: Input/output error"
+                mount_point=/tmp/flashplayer_image
+                mkdir $mount_point
+                hdiutil attach -readonly flashplayer_32_sa_debug.dmg -mountpoint $mount_point
+                cp -rf "$mount_point/Flash Player.app" /Applications
+                hdiutil detach $mount_point
+              popd
+
+              echo "flash-cmd=/Applications/Flash Player.app/Contents/MacOS/Flash Player Debugger" | tee -a $GITHUB_OUTPUT
             ;;
           Windows)
-            echo "WARNING: Don't know how to intall Flash Player on Windows"
+            flash_lso_dir="$(cygpath "$APPDATA")/Macromedia/Flash Player"
+
+            pushd "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}"
+               if [[ ! -f flashplayer_debugger.exe ]]; then
+                #flashplayer_latest_major_version=$(curl -sSfL http://fpdownload2.macromedia.com/get/flashplayer/update/current/xml/version_en_mac_pl.xml | grep -oP 'version="\K[0-9]+')
+                flashplayer_latest_major_version=32
+                curl -sSfL "https://fpdownload.macromedia.com/pub/flashplayer/updaters/$flashplayer_latest_major_version/flashplayer_${flashplayer_latest_major_version}_sa_debug.exe" -o flashplayer_debugger.exe
+
+                # alternative:
+                # https://archive.org/download/flash32-5y5r/Flash/Win/flashplayer_32_sa_debug.exe
+                # https://github.com/ntkernel/flash/releases/download/32.0.0.403/flashplayer_32_sa_debug.exe
+              fi
+
+              cp flashplayer_debugger.exe "$HOME/flashplayer_debugger.exe"
+            popd
+
+            echo "flash-cmd=$HOME/flashplayer_debugger.exe" | tee -a $GITHUB_OUTPUT
             ;;
         esac
+
+        mkdir -p "$flash_lso_dir"
+        pushd "$flash_lso_dir"
+          # Trust the current directory, to prevent "SecurityError: Error #2017: Only trusted local files may cause the Flash Player to exit."
+          mkdir -p "#Security/FlashPlayerTrust"
+          echo "$RUNNER_WORKSPACE" > "#Security/FlashPlayerTrust/github_actions.cfg"
+
+          # Configure trace logging 
+          # https://open-flash.github.io/documentation/mm-cfg/
+          # https://jpauclair.net/mm-cfg-secrets/
+          cat <<EOF > $HOME/mm.cfg
+        AllowUserLocalTrust=1
+        AutoUpdateDisable=0
+        CrashLogEnable=1
+        ErrorReportingEnable=1
+        TraceOutputBuffered=0
+        TraceOutputFileEnable=1
+        EOF
+          rm -f "Logs"
+          mkdir "Logs"
+          touch "Logs/flashlog.txt" 
+        popd
+
+        echo "flash-log=$flash_lso_dir/Logs/flashlog.txt" | tee -a $GITHUB_OUTPUT
+
         echo "::endgroup::"
 
 
@@ -234,17 +358,15 @@ runs:
         case "${{ runner.os }}" in
           Linux)
             if ! hash hl 2>/dev/null; then
-              hashlinkHome="${{ runner.tool_cache }}/haxe/targets/hashlink"
-              mkdir -p $(dirname $hashlinkHome)
-              if [ ! -f $hashlinkHome/hl ]; then
-                rm -rf $hashlinkHome
+              hashlinkHome="${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}/hashlink"
+              if [[ ! -f "$hashlinkHome/hl" ]]; then
+                rm -rf "$hashlinkHome"
                 if [[ -n "${{ github.token }}" ]]; then
                   authHeader='-H "Authorization: token ${{ github.token }}"'
                 fi
                 latest_url=$(eval curl -fsSL ${authHeader:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*-linux-amd64.tar.gz")
-                curl -sSfL $latest_url | tar -xz -C $HOME
-                mv $HOME/hashlink-* $hashlinkHome
-                chmod 555 $hashlinkHome/hl 
+                mkdir -p "$hashlinkHome"
+                curl -sSfL $latest_url | tar -xz --strip-components=1 -C "$hashlinkHome"
               fi
               echo "$hashlinkHome" >> $GITHUB_PATH
             fi
@@ -254,19 +376,18 @@ runs:
             ;;
           Windows)
             if ! hash hl 2>/dev/null; then
-              hashlinkHome="$(cygpath '${{ runner.tool_cache }}')/haxe/targets/hashlink"
-              mkdir -p $(dirname $hashlinkHome)
-              if [ ! -f $hashlinkHome/hl.exe ]; then
-                rm -rf $hashlinkHome
+              hashlinkHome="${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}/hashlink"
+              if [[ ! -f "$hashlinkHome/hl.exe" ]]; then
+                rm -rf "$hashlinkHome"
                 if [[ -n "${{ github.token }}" ]]; then
                   authHeader='-H "Authorization: token ${{ github.token }}"'
                 fi
                 latest_url=$(eval curl -fsSL ${authHeader:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*win64.zip")
-                curl -sSfL $latest_url -o $HOME/hashlink.zip
-                unzip $HOME/hashlink.zip -d $HOME
-                mv $HOME/hashlink-* $hashlinkHome
+                curl -sSfL $latest_url -o "$HOME/hashlink.zip"
+                unzip "$HOME/hashlink.zip" -d "$HOME"
+                mv "$HOME/hashlink-"* "$hashlinkHome"
               fi
-              echo "$(cygpath -w $hashlinkHome)" >> $GITHUB_PATH
+              echo '${{ steps.HAXE-TARGETS-CACHE.outputs.path_win }}\hashlink' >> $GITHUB_PATH
             fi
             ;;
         esac
@@ -276,6 +397,7 @@ runs:
       if: ${{ env.SETUP_HL == 'true' }}
       shell: bash
       run: hl --version
+
 
     - name: "Install: Java"
       if: ${{ env.SETUP_JAVA != 'false' }}
@@ -327,6 +449,7 @@ runs:
         set -euxo pipefail
 
         LUA_HOME=$HOME/lua
+        LUA_VERSION="${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }}"
         lualibs=
         lualib_install_opts=
         case "${{ runner.os }}" in
@@ -350,35 +473,54 @@ runs:
 
             echo "::group::Install: Lua"
               if [[ ! -d $LUA_HOME/bin ]]; then
-                hererocks $LUA_HOME --lua ${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }} -rlatest --target=mingw
+                mkdir -p "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}/luarocks_downloads"
+                hererocks "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION -rlatest --target=mingw --downloads '${{ steps.HAXE-TARGETS-CACHE.outputs.path_win }}\luarocks_downloads'
               fi
-              echo "$(cygpath -w $LUA_HOME/bin)" >> $GITHUB_PATH
+              echo "$(cygpath -w "$LUA_HOME/bin")" >> $GITHUB_PATH
               export PATH="$LUA_HOME/bin:$PATH"
             echo "::endgroup::"
 
             echo "::group::Install: mingw/pcre"
-              curl -sSfL https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst | zstd -d | tar -x --strip-components=1 -C /
-              cp /bin/libpcre*.dll $LUA_HOME/bin
-              lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+              pushd "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}"
+                pcre_pkg="mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst"
+                if [[ ! -f "$pcre_pkg" ]]; then
+                  rm -f mingw-*-pcre-*.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
+                fi
+
+                ls -l $pcre_pkg
+                zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
+                cp /bin/libpcre*.dll $LUA_HOME/bin
+                lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+              popd
             echo "::endgroup::"
 
             echo "::group::Install: mingw/openssl"
-              # https://github.com/brunoos/luasec/issues/150
-              curl -sSfL https://repo.msys2.org/mingw/mingw64/mingw-w64-x86_64-openssl-1.1.1.s-1-any.pkg.tar.zst | zstd -d | tar -x --strip-components=1 -C /
-              cp /bin/libcrypto*.dll $LUA_HOME/bin
-              cp /bin/libssl*.dll $LUA_HOME/bin
-              lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
+              pushd "${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}"
+                # https://github.com/brunoos/luasec/issues/150
+                openssl_pkg="mingw-w64-x86_64-openssl-1.1.1.s-1-any.pkg.tar.zst"
+                if [[ ! -f "$openssl_pkg" ]]; then
+                  rm -f mingw-*-openssl-*.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$openssl_pkg -o $openssl_pkg
+                fi
+
+                ls -l $openssl_pkg
+                zstd -d -c $openssl_pkg | tar -x --strip-components=1 -C /
+                cp /bin/libcrypto*.dll $LUA_HOME/bin
+                cp /bin/libssl*.dll $LUA_HOME/bin
+                lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
+              popd
             echo "::endgroup::"
 
             echo "::group::Patch: luarocks/luasec"
               curl -sSfL https://raw.githubusercontent.com/brunoos/luasec/master/luasec-1.2.0-1.rockspec | sed 's/32MD//g' > $HOME/luasec-1.2.0-1.rockspec
-              lualibs+=" $(cygpath -wa $HOME/luasec-1.2.0-1.rockspec)"
+              lualibs+=" $(cygpath -wa "$HOME/luasec-1.2.0-1.rockspec")"
             echo "::endgroup::"
 
             echo "::group::Patch: luarocks/hx-lua-simdjson"
               #lualibs+=" hx-lua-simdjson@0.0.1-1"
               curl -sSfL https://raw.githubusercontent.com/inklit/hx-lua-simdjson/master/hx-lua-simdjson-0.0.1-0.rockspec | sed 's/tag = "0.0.2"/branch = "master"/' > $HOME/hx-lua-simdjson-0.0.1-0.rockspec
-              lualibs+=" $(cygpath -wa $HOME/hx-lua-simdjson-0.0.1-0.rockspec)"
+              lualibs+=" $(cygpath -wa "$HOME/hx-lua-simdjson-0.0.1-0.rockspec")"
               if [[ ! -e lua.dll ]]; then
                 cp $LUA_HOME/bin/lua*.dll $LUA_HOME/bin/lua.dll 
                 cp $LUA_HOME/lib/liblua*.a $LUA_HOME/lib/lua.a
@@ -389,7 +531,7 @@ runs:
               #lualibs+=" environ@0.1.0-1" # for Haxe 3
               # https://github.com/moteus/lua-environ/issues/1
               curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $HOME/environ-0.1.0-1.rockspec
-              lualibs+=" $(cygpath -wa $HOME/environ-0.1.0-1.rockspec)"
+              lualibs+=" $(cygpath -wa "$HOME/environ-0.1.0-1.rockspec")"
             echo "::endgroup::"
             ;;
 
@@ -406,9 +548,7 @@ runs:
  
             echo "::group::Install: Lua"
               if [[ ! -d $LUA_HOME/bin ]]; then
-                pushd $HOME
-                  hererocks lua --lua ${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }} -rlatest
-                popd
+                hererocks $LUA_HOME --lua $LUA_VERSION -rlatest --downloads '${{ steps.HAXE-TARGETS-CACHE.outputs.path_nix }}/luarocks_downloads'
               fi
               echo "$LUA_HOME/bin" >> $GITHUB_PATH
               export PATH="$LUA_HOME//bin:$PATH"
@@ -475,19 +615,44 @@ runs:
     # Cache Update
     # See https://github.com/actions/cache/issues/342
     ##################################################
-    - name: "Haxe Targets Cache: Delete Previous"
-      if: ${{ steps.cache-restore.outputs.cache-hit && !env.ACT }}
+    - name: "Haxe Targets Cache: Prepare Update"
+      id: HAXE-TARGETS-CACHE-UPDATE-PREPARE
+      if: ${{ !env.ACT }}
       env:
         GH_TOKEN: ${{ github.token }}
       shell: bash
       run: |
-        gh extension install actions/gh-actions-cache || true
-        gh actions-cache delete ${{ steps.cache-restore.outputs.cache-matched-key }} --confirm || true
+        echo "::group::Haxe Targets Cache: Prepare Update"
+          set -euo pipefail
+          if [[ "${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-hit }}" == "true" ]]; then
+
+            pushd "${{ steps.haxe-targets.cache.outputs.path_nix }}"
+              # create a quick hashsum based on file names and file size
+              case "${{ runner.os }}" in
+                macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
+                *)     current_hash="$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" ;;
+              esac
+            popd
+
+            if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
+              echo "Cache update needed, since folder content changed. new hash: $current_hash"
+              echo "need_cache_update=true" | tee -a $GITHUB_OUTPUT
+
+              gh extension install actions/gh-actions-cache || true
+              gh actions-cache delete "${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-matched-key }}" --confirm || true
+            else
+              echo "No Cache update needed"
+            fi
+          else
+            echo "Cache update needed, since no cache hit occured"
+            echo "need_cache_update=true" | tee -a $GITHUB_OUTPUT
+          fi
+        echo "::endgroup::"
 
     - name: "Haxe Targets Cache: Update"
       uses: actions/cache/save@v3
-      if: ${{ always() && !cancelled() && !env.ACT }} # save cache even fails
+      if: ${{ steps.HAXE-TARGETS-CACHE-UPDATE-PREPARE.outputs.need_cache_update }}
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/targets
-        key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+        key: ${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-primary-key }}

@@ -1,0 +1,4 @@
+tests.hxml
+-D no-swf-compress
+-D swf-script-timeout=60
+-swf-version 11.5

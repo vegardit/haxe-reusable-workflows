@@ -66,7 +66,7 @@ jobs:
       test-jvm:    true
       test-lua:    true
       test-neko:   true
-      test-node:   true
+      test-node:   tests-node.hxml  # run tests with a target specific hxml file
       test-php:    true
       test-python: true
 
@@ -131,7 +131,7 @@ jobs:
         test-java:   true
         test-jvm:    true
         test-lua:    true
-        test-neko:   true
+        test-node:   tests-node.hxml  # run tests with a target specific hxml file
         test-node:   true
         test-php:    true
         test-python: true
