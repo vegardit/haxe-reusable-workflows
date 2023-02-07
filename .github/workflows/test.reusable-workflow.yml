@@ -20,6 +20,20 @@ on:
   pull_request:
   workflow_dispatch:
     # https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/
+    inputs:
+      debug-with-ssh:
+        description: "Start an SSH server for debugging purposes after test runs:"
+        default: never
+        type: choice
+        options:
+        - always
+        - on_failure
+        - on_failure_or_cancelled
+        - never
+      debug-with-ssh-only-for-actor:
+        description: "Limit access to the SSH server to the GitHub user that triggered the job."
+        default: true
+        type: boolean
 
 jobs:
   test-reusable-workflow:
@@ -62,3 +76,5 @@ jobs:
           cancelled) echo "Job cancelled." ;;
           *)         echo "ERROR: Unexpected job status $GITHUB_JOB_STATUS"; exit 1 ;;
         esac
+      debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
+      debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}

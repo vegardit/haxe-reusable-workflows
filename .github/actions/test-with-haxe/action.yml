@@ -29,6 +29,9 @@ inputs:
   after-tests:        { required: false, description: "a bash script to be executed after the last test" }
   #after-tests-shell:  { default: "bash", description: "shell to be used to esecute the after-tests script" 
 
+  debug-with-ssh:                { default: "never", description: "Start an SSH server for debugging purposes after test runs: never, always, on_failure, on_failure_or_cancelled" }
+  debug-with-ssh-only-for-actor: { default: "true",  description: "Limit access to the SSH server to the GitHub user that triggered the job." }
+
   setup-cpp:    { default: "true", description: "true or false" }
   setup-cs:     { default: "true", description: "true or false" }
   setup-flash:  { default: "true", description: "true or false" }
@@ -428,3 +431,9 @@ runs:
         GITHUB_JOB_ID: ${{ github.job }}
         GITHUB_JOB_STATUS: ${{ job.status }}
       run: ${{ inputs.after-tests }}
+
+    - name: "SSH session for debugging"
+      uses: mxschmitt/action-tmate@v3
+      if: ${{ (inputs.debug-with-ssh == 'always' && always()) || (inputs.debug-with-ssh == 'on_failure' && failure()) || (inputs.debug-with-ssh == 'on_failure_or_cancelled' && (failure() || cancelled())) }}
+      with:
+        limit-access-to-actor: ${{ inputs.debug-with-ssh-only-for-actor }}
