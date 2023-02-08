@@ -1,7 +1,8 @@
 # haxe-reusable-workflows
 
-[![License](https://img.shields.io/github/license/vegardit/haxe-reusable-workflows.svg?label=license)](#license)
 [![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.reusable-workflow.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.reusable-workflow.yml)
+[![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.composite-action.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.composite-action.yml)
+[![License](https://img.shields.io/github/license/vegardit/haxe-reusable-workflows.svg?label=license)](#license)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
 
