@@ -75,18 +75,18 @@ runs:
 
         if [[ "${{ runner.os }}" == "Windows" ]]; then
           path_nix="$(cygpath '${{ runner.tool_cache }}')/haxe/targets"
-          echo 'path_win=${{ runner.tool_cache }}\haxe\targets' | tee -a $GITHUB_OUTPUT
+          echo 'path_win=${{ runner.tool_cache }}\haxe\targets' | tee -a "$GITHUB_OUTPUT"
         else
           path_nix="${{ runner.tool_cache }}/haxe/targets"
         fi
         mkdir -p "$path_nix"
-        echo "path_nix=$path_nix" | tee -a $GITHUB_OUTPUT
+        echo "path_nix=$path_nix" | tee -a "$GITHUB_OUTPUT"
 
         pushd "$path_nix"
           # create a quick hashsum based on file names and file size
           case "${{ runner.os }}" in
-            macOS) echo "initial_hash=$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" | tee -a $GITHUB_OUTPUT ;;
-            *)     echo "initial_hash=$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" | tee -a $GITHUB_OUTPUT ;;
+            macOS) echo "initial_hash=$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
+            *)     echo "initial_hash=$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
           esac
         popd
 
@@ -260,7 +260,7 @@ runs:
           "$HOME/flashplayerdebugger" "\$@"
         EOF
             chmod 755 "$HOME/flashplayer.sh"
-            echo "flash-cmd=$HOME/flashplayer.sh" | tee -a $GITHUB_OUTPUT
+            echo "flash-cmd=$HOME/flashplayer.sh" | tee -a "$GITHUB_OUTPUT"
             ;;
           macOS)
               flash_lso_dir="$HOME/Library/Preferences/Macromedia/Flash Player"
@@ -290,7 +290,7 @@ runs:
                 hdiutil detach $mount_point
               popd
 
-              echo "flash-cmd=/Applications/Flash Player.app/Contents/MacOS/Flash Player Debugger" | tee -a $GITHUB_OUTPUT
+              echo "flash-cmd=/Applications/Flash Player.app/Contents/MacOS/Flash Player Debugger" | tee -a "$GITHUB_OUTPUT"
             ;;
           Windows)
             flash_lso_dir="$(cygpath "$APPDATA")/Macromedia/Flash Player"
@@ -309,7 +309,7 @@ runs:
               cp flashplayer_debugger.exe "$HOME/flashplayer_debugger.exe"
             popd
 
-            echo "flash-cmd=$HOME/flashplayer_debugger.exe" | tee -a $GITHUB_OUTPUT
+            echo "flash-cmd=$HOME/flashplayer_debugger.exe" | tee -a "$GITHUB_OUTPUT"
             ;;
         esac
 
@@ -335,7 +335,7 @@ runs:
           touch "Logs/flashlog.txt" 
         popd
 
-        echo "flash-log=$flash_lso_dir/Logs/flashlog.txt" | tee -a $GITHUB_OUTPUT
+        echo "flash-log=$flash_lso_dir/Logs/flashlog.txt" | tee -a "$GITHUB_OUTPUT"
 
         echo "::endgroup::"
 
@@ -634,7 +634,7 @@ runs:
 
             if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
               echo "Cache update needed, since folder content changed. new hash: $current_hash"
-              echo "need_cache_update=true" | tee -a $GITHUB_OUTPUT
+              echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
 
               gh extension install actions/gh-actions-cache || true
               gh actions-cache delete "${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-matched-key }}" --confirm || true
@@ -643,7 +643,7 @@ runs:
             fi
           else
             echo "Cache update needed, since no cache hit occured"
-            echo "need_cache_update=true" | tee -a $GITHUB_OUTPUT
+            echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
           fi
         echo "::endgroup::"
 
