@@ -38,6 +38,10 @@ on:
       debug-with-ssh-only-for-actor:     { default: true,    type: boolean, description: "Limit access to the SSH session to the GitHub user that triggered the job" }
       debug-with-ssh-only-jobs-matching: { default: ".*",    type: string,  description: "Only start an SSH session for jobs matching this regex pattern" }
 
+      # only needs to be specified when executed with nektos/act:
+      haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", type: string, description: "Repository containing this workflow" }
+      haxe-reusable-workflows-version: { default: "v1",                               type: string, description: "Version of this workflow" }
+
 defaults:
   run:
     shell: bash
@@ -136,16 +140,28 @@ jobs:
     - name: "Determine reusable workflow repo"
       id: job_workflow_info
       run: |
-        id_token_payload=$(jq -R 'split(".") | .[1] | @base64d | fromjson' <<< "$ACTIONS_ID_TOKEN_REQUEST_TOKEN")
-        echo "repo=$(jq -r '.oidc_extra | fromjson | .job_workflow_ref | split("/")[0:2] | join("/")' <<< $id_token_payload)" >> $GITHUB_OUTPUT
-        echo  "ref=$(jq -r ".oidc_extra | fromjson | .job_workflow_sha" <<< $id_token_payload)" >> $GITHUB_OUTPUT
-
+        # nektos/act does not provide $ACTIONS_ID_TOKEN_REQUEST_TOKEN so we need a workaround for the workaround
+        if [[ "${{ env.ACT }}" == "true" ]]; then
+          # checkout "actions/checkout@v3" fails with "using ::error::Input required and not supplied: token"
+          # thus we do it old school
+          rm -rf ./.github/haxe-reusable-workflows
+          git clone "https://github.com/${{ inputs.haxe-reusable-workflows-repo }}" \
+             --depth 1 --single-branch \
+             -b "${{ inputs.haxe-reusable-workflows-version }}" \
+             ./.github/haxe-reusable-workflows
+        else
+          id_token_payload=$(jq -R 'split(".") | .[1] | @base64d | fromjson' <<< "$ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          echo "repo=$(jq -r '.oidc_extra | fromjson | .job_workflow_ref | split("/")[0:2] | join("/")' <<< $id_token_payload)" >> $GITHUB_OUTPUT
+          echo  "ref=$(jq -r ".oidc_extra | fromjson | .job_workflow_sha" <<< $id_token_payload)" >> $GITHUB_OUTPUT
+        fi
     - name: "Git checkout workflow repo"
+      if: ${{ !env.ACT }}
       uses: actions/checkout@v3
       with:
         path: ./.github/haxe-reusable-workflows
         repository: ${{ steps.job_workflow_info.outputs.repo }}
         ref: ${{ steps.job_workflow_info.outputs.ref }}
+
 
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets

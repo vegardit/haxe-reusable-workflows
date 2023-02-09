@@ -127,17 +127,28 @@ runs:
       run: jq --version
 
 
-
     # workaround to determine job_workflow_ref / job_workflow_sha to run the 'setup-haxe-targets' action from the same branch as the reusable workflow
     # - https://stackoverflow.com/questions/71046096/reusable-workflows-with-local-actions
     # - https://github.com/community/community/discussions/31054
-
     - name: "Git checkout workflow repo"
+      if: ${{ !env.ACT }}
       uses: actions/checkout@v3
       with:
         path: ./.github/haxe-reusable-workflows
         repository: ${{ inputs.haxe-reusable-workflows-repo }}
         ref: ${{ inputs.haxe-reusable-workflows-version }}
+        token: ${{ github.token }}
+    - name: "Git checkout workflow repo"
+      if: ${{ env.ACT }}
+      shell: bash
+      run: |
+        # checkout "actions/checkout@v3" fails with "using ::error::Input required and not supplied: token"
+        # thus we do it old school
+        rm -rf ./.github/haxe-reusable-workflows
+        git clone "https://github.com/${{ inputs.haxe-reusable-workflows-repo }}" \
+           --depth 1 --single-branch \
+           -b "${{ inputs.haxe-reusable-workflows-version }}" \
+           ./.github/haxe-reusable-workflows
 
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets
