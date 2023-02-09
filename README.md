@@ -66,18 +66,18 @@ on:
   workflow_dispatch: # this allows you to manually trigger a run with input parameters
     inputs:
       debug-with-ssh:
-        description: "Start an SSH server for debugging purpose after test runs:"
+        description: "Start an SSH session for debugging purposes after tests ran:"
         default: never
         type: choice
-        options:
-        - always
-        - on_failure
-        - on_failure_or_cancelled
-        - never
+        options: [ always, on_failure, on_failure_or_cancelled, never ]
       debug-with-ssh-only-for-actor:
-        description: "Limit access to the SSH server to the GitHub user that triggered the job."
+        description: "Limit access to the SSH session to the GitHub user that triggered the job."
         default: true
         type: boolean
+      debug-with-ssh-only-jobs-matching:
+        description: "Only start an SSH session for jobs matching this regex pattern:"
+        default: ".*"
+        type: string
 
 jobs:
   my-haxe-build:
@@ -132,6 +132,7 @@ jobs:
       # provide SSH access to the GitHub runner for manual debugging purposes
       debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
       debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
+      debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-jobs-matching }}
 
 ```
 
@@ -179,18 +180,18 @@ on:
   workflow_dispatch: # this allows you to manually trigger a run with input parameters
     inputs:
       debug-with-ssh:
-        description: "Start an SSH server for debugging purpose after test runs:"
+        description: "Start an SSH session for debugging purposes after tests ran:"
         default: never
         type: choice
-        options:
-        - always
-        - on_failure
-        - on_failure_or_cancelled
-        - never
+        options: [ always, on_failure, on_failure_or_cancelled, never ]
       debug-with-ssh-only-for-actor:
-        description: "Limit access to the SSH server to the GitHub user that triggered the job."
+        description: "Limit access to the SSH session to the GitHub user that triggered the job."
         default: true
         type: boolean
+      debug-with-ssh-only-jobs-matching:
+        description: "Only start an SSH session for jobs matching this regex pattern:"
+        default: ".*"
+        type: string
 
 jobs:
   my-haxe-build:
@@ -248,6 +249,7 @@ jobs:
       # provide SSH access to the GitHub runner for manual debugging purposes
       debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
       debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
+      debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-jobs-matching }}
 
     # other steps ...
 ```

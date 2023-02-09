@@ -29,8 +29,9 @@ inputs:
   after-tests:        { required: false, description: "a bash script to be executed after the last test" }
   #after-tests-shell:  { default: "bash", description: "shell to be used to esecute the after-tests script" 
 
-  debug-with-ssh:                { default: "never", description: "Start an SSH server for debugging purposes after test runs: never, always, on_failure, on_failure_or_cancelled" }
-  debug-with-ssh-only-for-actor: { default: "true",  description: "Limit access to the SSH server to the GitHub user that triggered the job." }
+  debug-with-ssh:                    { default: "never", description: "Start an SSH session for debugging purposes after tests ran: never, always, on_failure, on_failure_or_cancelled" }
+  debug-with-ssh-only-for-actor:     { default: "true",  description: "Limit access to the SSH session to the GitHub user that triggered the job" }
+  debug-with-ssh-only-jobs-matching: { default: ".*",    description: "Only start an SSH session for jobs matching this regex pattern" }
 
   setup-cpp:    { default: "true", description: "true or false" }
   setup-cs:     { default: "true", description: "true or false" }
@@ -432,8 +433,28 @@ runs:
         GITHUB_JOB_STATUS: ${{ job.status }}
       run: ${{ inputs.after-tests }}
 
-    - name: "SSH session for debugging"
-      uses: mxschmitt/action-tmate@v3
-      if: ${{ (inputs.debug-with-ssh == 'always' && always()) || (inputs.debug-with-ssh == 'on_failure' && failure()) || (inputs.debug-with-ssh == 'on_failure_or_cancelled' && (failure() || cancelled())) }}
+    - name: "SSH session for debugging: check"
+      id: debug_ssh_sesssion_check
+      if: always()
+      shell: bash
+      run: |
+        set -eu
+        job_filter_pattern="${{ inputs.debug-with-ssh-only-jobs-matching }}"
+        echo "job_filter: $job_filter_pattern"
+
+        job_info=$(echo "$GITHUB_JOB ${{ toJSON(matrix) }}" | tr -d '\n')
+        echo "job_info: $job_info"
+
+        if [[ "$job_info" =~ .*$job_filter_pattern.* ]] && case "${{ job.status }}" in
+           success)   [[ "${{ inputs.debug-with-ssh }}" == always ]] ;;
+           cancelled) [[ "${{ inputs.debug-with-ssh }}" == on_failure_or_cancelled ]] ;;
+           failure)   [[ "${{ inputs.debug-with-ssh }}" =~ on_failure.* ]] ;;
+        esac; then
+           echo "start_session=true" >>$GITHUB_OUTPUT;
+        fi
+
+    - name: "SSH session for debugging: start"
+      uses: mxschmitt/action-tmate@v3 # https://github.com/mxschmitt/action-tmate
+      if: always() && steps.debug_ssh_sesssion_check.outputs.start_session
       with:
         limit-access-to-actor: ${{ inputs.debug-with-ssh-only-for-actor }}
