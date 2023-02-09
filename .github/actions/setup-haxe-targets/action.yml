@@ -634,10 +634,17 @@ runs:
 
             if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
               echo "Cache update needed, since folder content changed. new hash: $current_hash"
-              echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
 
-              gh extension install actions/gh-actions-cache || true
-              gh actions-cache delete "${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-matched-key }}" --confirm || true
+              primaryCacheKey="${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-primary-key }}"
+              matchedCacheKey="${{ steps.HAXE-TARGETS-CACHE-RESTORE.outputs.cache-matched-key }}"
+              if [[ $primaryCacheKey == "$matchedCacheKey" ]]; then
+                gh extension install actions/gh-actions-cache || true
+                if gh actions-cache delete "$primaryCacheKey" --confirm; then
+                  echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"                  
+                fi 
+              else
+                echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+              fi
             else
               echo "No Cache update needed"
             fi

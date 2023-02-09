@@ -84,7 +84,7 @@ jobs:
     # See https://github.com/actions/cache/issues/342
     ##################################################
     - name: "Haxe Libs Cache: Restore"
-      id: cache-restore
+      id: HAXE-LIBS-CACHE-RESTORE
       if: ${{ !env.ACT }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
       with:
@@ -92,6 +92,30 @@ jobs:
           ${{ runner.tool_cache }}/haxe/lib
           ${{ runner.tool_cache }}/jq
         key: ${{ runner.os }}-haxelibs-${{ inputs.haxe-version }}
+
+    - name: "Haxe Libs Cache: Init Root Path"
+      id: HAXE-TARGETS-CACHE
+      run: |
+        set -euo pipefail
+
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          path_nix="$(cygpath '${{ runner.tool_cache }}')/haxe/lib"
+          echo 'path_win=${{ runner.tool_cache }}\haxe\lib' | tee -a "$GITHUB_OUTPUT"
+        else
+          path_nix="${{ runner.tool_cache }}/haxe/lib"
+        fi
+        mkdir -p "$path_nix"
+        echo "path_nix=$path_nix" | tee -a "$GITHUB_OUTPUT"
+
+        pushd "$path_nix"
+          # create a quick hashsum based on file names and file size
+          case "${{ runner.os }}" in
+            macOS) echo "initial_hash=$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
+            *)     echo "initial_hash=$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
+          esac
+        popd
+
+        ls -l $path_nix
 
 
     ##################################################
@@ -244,22 +268,52 @@ jobs:
     # Cache Update
     # See https://github.com/actions/cache/issues/342
     ##################################################
-    - name: "Haxe Libs Cache: Delete Previous"
-      if: ${{ steps.cache-restore.outputs.cache-hit && !env.ACT }}
+    - name: "Haxe Libs Cache: Prepare Update"
+      id: HAXE-LIBS-CACHE-UPDATE-PREPARE
+      if: ${{ !env.ACT }}
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh extension install actions/gh-actions-cache || true
-        gh actions-cache delete ${{ steps.cache-restore.outputs.cache-matched-key }} --confirm || true
+        set -euo pipefail
+        if [[ "${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-hit }}" == "true" ]]; then
+
+          pushd "${{ steps.haxe-targets.cache.outputs.path_nix }}"
+            # create a quick hashsum based on file names and file size
+            case "${{ runner.os }}" in
+              macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
+              *)     current_hash="$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" ;;
+            esac
+          popd
+
+          if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
+            echo "Cache update needed, since folder content changed. new hash: $current_hash"
+
+            primaryCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}"
+            matchedCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-matched-key }}"
+            if [[ $primaryCacheKey == "$matchedCacheKey" ]]; then
+              gh extension install actions/gh-actions-cache || true
+              if gh actions-cache delete "$primaryCacheKey" --confirm; then
+                echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"                  
+              fi
+            else
+              echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "No Cache update needed"
+          fi
+        else
+          echo "Cache update needed, since no cache hit occured"
+          echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+        fi
 
     - name: "Haxe Libs Cache: Update"
       uses: actions/cache/save@v3
-      if: ${{ always() && !cancelled() && !env.ACT }} # save cache even fails
+      if: ${{ steps.HAXE-LIBS-CACHE-UPDATE-PREPARE.outputs.need_cache_update }}
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
           ${{ runner.tool_cache }}/jq
-        key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+        key: ${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}
 
     - name: "Before Tests: Custom Bash script"
       if: ${{ inputs.before-tests }}
