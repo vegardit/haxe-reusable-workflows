@@ -108,7 +108,7 @@ runs:
           # see https://github.com/actions/runner-images/issues/675
           # see https://github.com/actions/runner-images/issues/704
           curl -sSfL https://raw.githubusercontent.com/vegardit/fast-apt-mirror.sh/v1/fast-apt-mirror.sh -o $HOME/fast-apt-mirror.sh
-          bash $HOME/fast-apt-mirror.sh find --apply -v --parallel 5 --speedtests 10 --sample-size 800
+          bash $HOME/fast-apt-mirror.sh find --apply -v --parallel 2 --speedtests 10 --sample-size 1024
         fi
 
         # refresh pkg cache if it does not exist or is older than 60min.
