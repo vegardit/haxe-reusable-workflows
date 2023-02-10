@@ -424,7 +424,7 @@ jobs:
           ps aux | grep "[t]ail --follow=name --retry" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
           if [[ $exit_code -eq 0 ]]; then break;
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
-          else sleep 5; fi
+          else sleep 2; fi
         done
 
     - name: Test [java]
