@@ -102,6 +102,7 @@ jobs:
         haxe-version: ${{ matrix.haxe }}
         haxe-args: -cp src -main MainWithError
         continue-on-error: cpp cs eval flash hl java jvm lua neko node php python
+        retries: 1
         setup-targets: false
         test-cpp: true
         test-cs: true

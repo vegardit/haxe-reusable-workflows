@@ -114,6 +114,7 @@ jobs:
       test-python: true
 
       continue-on-error: flash php # a list of targets that are allowed to fail
+      retries: 2 # number of additional retries in case a test run fails, default is 0
 
       timeout-minutes: 30     # max. duration of the workflow, default is 60
       timeout-minutes-test: 5 # max. duration per target test, default is 10
@@ -236,6 +237,7 @@ jobs:
         test-python: true
 
         continue-on-error: flash php # a list of targets that are allowed to fail
+        retries: 2 # number of additional retries in case a test run fails, default is 0
 
       # bash script to be executed after compiler targets are installed and before target tests are executed
       before-tests: |

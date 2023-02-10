@@ -25,6 +25,7 @@ inputs:
   test-python: { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
 
   continue-on-error: { required: false, description: "A space or comma separated list of haxe targets which are allowed to fail" }
+  retries:           { default:    "0", description: "Number of test retries in case of failures" }
 
   before-tests:       { required: false, description: "a bash script to be executed before the first test" }
   #before-tests-shell: { default: "bash", description: "shell to be used to esecute the before-tests script" }
@@ -361,7 +362,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_NEKO != "true" ]] && hxmlFile=$TEST_NEKO || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -neko ${{ inputs.output-dir }}/tests.n
-        neko ${{ inputs.output-dir }}/tests.n
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          neko ${{ inputs.output-dir }}/tests.n && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [hl]
@@ -374,7 +383,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_HL != "true" ]] && hxmlFile=$TEST_HL || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -hl ${{ inputs.output-dir }}/tests.hl
-        hl ${{ inputs.output-dir }}/tests.hl
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          hl ${{ inputs.output-dir }}/tests.hl && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [eval]
@@ -386,7 +403,15 @@ runs:
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_EVAL != "true" ]] && hxmlFile=$TEST_EVAL || hxmlFile="${{ inputs.haxe-args }}"
-        haxe $hxmlFile -D eval-stack --interp
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          haxe $hxmlFile -D eval-stack --interp && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [flash]
@@ -403,18 +428,14 @@ runs:
         # workaround for random "Application crashed with an unhandled SIGSEGV"
         max_attempts=10
         for i in $(seq 1 $max_attempts); do
-          echo "$i. attempt..."
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
           rm -f ${{ steps.setup-haxe-targets.outputs.flash-log }}
           tail --follow=name --retry "${{ steps.setup-haxe-targets.outputs.flash-log }}" 2>/dev/null &
-          "${{ steps.setup-haxe-targets.outputs.flash-cmd }}" "${{ inputs.output-dir }}/tests.swf" && flash_exit_code=0 || flash_exit_code=1
+          "${{ steps.setup-haxe-targets.outputs.flash-cmd }}" "${{ inputs.output-dir }}/tests.swf" && exit_code=0 || exit_code=$?
           ps aux | grep "[t]ail --follow=name --retry" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
-          if [[ $flash_exit_code -eq 0 ]]; then
-            break
-          elif [[ $i -eq $max_attempts ]]; then
-            exit 1
-          else
-            sleep 2
-          fi
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
         done
         echo "::endgroup::"
 
@@ -428,7 +449,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_JAVA != "true" ]] && hxmlFile=$TEST_JAVA || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -java ${{ inputs.output-dir }}
-        java -jar ${{ inputs.output-dir }}/*.jar
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          java -jar ${{ inputs.output-dir }}/*.jar && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [jvm]
@@ -441,7 +470,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_JVM != "true" ]] && hxmlFile=$TEST_JVM || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -D jvm -java ${{ inputs.output-dir }}
-        java -jar ${{ inputs.output-dir }}/*.jar
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          java -jar ${{ inputs.output-dir }}/*.jar && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [lua]
@@ -454,7 +491,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_LUA != "true" ]] && hxmlFile=$TEST_LUA || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -lua ${{ inputs.output-dir }}/tests.lua
-        lua ${{ inputs.output-dir }}/tests.lua
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          lua ${{ inputs.output-dir }}/tests.lua && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [node]
@@ -467,7 +512,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_NODE != "true" ]] && hxmlFile=$TEST_NODE || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -lib hxnodejs -D nodejs -js ${{ inputs.output-dir }}/tests.js
-        node ${{ inputs.output-dir }}/tests.js
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          node ${{ inputs.output-dir }}/tests.js && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [php]
@@ -480,7 +533,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_PHP != "true" ]] && hxmlFile=$TEST_PHP || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -php ${{ inputs.output-dir }}/php
-        php ${{ inputs.output-dir }}/php/index.php
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          php ${{ inputs.output-dir }}/php/index.php && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [python]
@@ -493,7 +554,16 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_PYTHON != "true" ]] && hxmlFile=$TEST_PYTHON || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -python ${{ inputs.output-dir }}/tests.py
-        python ${{ inputs.output-dir }}/tests.py
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          python ${{ inputs.output-dir }}/tests.py && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
+        echo "::endgroup::"
 
     - name: Test [cs]
       if: ${{ env.TEST_CS != 'false' }}
@@ -505,7 +575,15 @@ runs:
         rm -rf ${{ inputs.output-dir }}/*
         [[ $TEST_CS != "true" ]] && hxmlFile=$TEST_CS || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -cs ${{ inputs.output-dir }}/cs
-        mono ${{ inputs.output-dir }}/cs/bin/*.exe
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          mono ${{ inputs.output-dir }}/cs/bin/*.exe && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: Test [cpp] # testing C++ as last since it takes the longest to build
@@ -523,7 +601,15 @@ runs:
         else
           executableFilterFlag="-executable"
         fi
-        $(find ${{ inputs.output-dir }}/cpp -maxdepth 1 $executableFilterFlag -type f)
+
+        max_attempts=$((1 + ${{ inputs.retries }}))
+        for i in $(seq 1 $max_attempts); do
+          echo -e "$i. of $max_attempts attempt(s)...\n====================="
+          $(find ${{ inputs.output-dir }}/cpp -maxdepth 1 $executableFilterFlag -type f) && exit_code=0 || exit_code=$?
+          if [[ $exit_code -eq 0 ]]; then break;
+          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+          else sleep 5; fi
+        done
         echo "::endgroup::"
 
     - name: "After Tests: Custom Bash script"
