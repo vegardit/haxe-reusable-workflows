@@ -91,3 +91,27 @@ jobs:
         debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
         debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
         debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-for-actor }}
+
+    - name: "Test with Haxe (continue-on-error)"
+      uses: ./.github/actions/test-with-haxe
+      if: runner.os != 'Windows' # TODO https://github.com/krdlab/setup-haxe/pull/29
+      with:
+        haxe-reusable-workflows-repo:    ${{ github.repository }}
+        haxe-reusable-workflows-version: ${{ github.ref }}
+
+        haxe-version: ${{ matrix.haxe }}
+        hxml-file: -cp src -main MainWithError
+        continue-on-error: cpp cs eval flash hl java jvm lua neko node php python
+        setup-targets: false
+        test-cpp: true
+        test-cs: true
+        test-eval: true
+        test-flash: ${{ !startsWith(matrix.os, 'macos') && 'tests-flash.hxml' || false }} # FlashPlayer hangs on MacOS
+        test-hl: ${{ matrix.haxe != '3.4.7' }}
+        test-java: true
+        test-jvm: true
+        test-lua: true
+        test-neko: true
+        test-node: true
+        test-php: true
+        test-python: true

@@ -24,6 +24,8 @@ inputs:
   test-php:    { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
   test-python: { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
 
+  continue-on-error: { required: false, description: "A space or comma separated list of haxe targets which are allowed to fail" }
+
   before-tests:       { required: false, description: "a bash script to be executed before the first test" }
   #before-tests-shell: { default: "bash", description: "shell to be used to esecute the before-tests script" }
   after-tests:        { required: false, description: "a bash script to be executed after the last test" }
@@ -33,15 +35,16 @@ inputs:
   debug-with-ssh-only-for-actor:     { default: "true",  description: "Limit access to the SSH session to the GitHub user that triggered the job" }
   debug-with-ssh-only-jobs-matching: { default: ".*",    description: "Only start an SSH session for jobs matching this regex pattern" }
 
-  setup-cpp:    { default: "true", description: "true or false" }
-  setup-cs:     { default: "true", description: "true or false" }
-  setup-flash:  { default: "true", description: "true or false" }
-  setup-hl:     { default: "true", description: "true or false" }
-  setup-java:   { default: "true", description: "true or false or Java version" }
-  setup-lua:    { default: "true", description: "true or false or Lua version" }
-  setup-node:   { default: "true", description: "true or false or Node.js version" }
-  setup-php:    { default: "true", description: "true or false or PHP version" }
-  setup-python: { default: "true", description: "true or false or Python version" }
+  setup-cpp:     { default: "true", description: "true or false" }
+  setup-cs:      { default: "true", description: "true or false" }
+  setup-flash:   { default: "true", description: "true or false" }
+  setup-hl:      { default: "true", description: "true or false" }
+  setup-java:    { default: "true", description: "true or false or Java version" }
+  setup-lua:     { default: "true", description: "true or false or Lua version" }
+  setup-node:    { default: "true", description: "true or false or Node.js version" }
+  setup-php:     { default: "true", description: "true or false or PHP version" }
+  setup-python:  { default: "true", description: "true or false or Python version" }
+  setup-targets: { default: "true", description: "true or false. Controls if any compiler target should be setup at all. Useful if this action is executed multiple times in the same workflow." }
 
   # internal:
   haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
@@ -69,6 +72,22 @@ runs:
         TEST_PHP=${{    inputs.test-php }}
         TEST_PYTHON=${{ inputs.test-python }}
         EOF
+
+        cat <<EOF >> $GITHUB_ENV
+        TEST_CPP_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *cpp*    ]] && echo "true" || : )
+        TEST_CS_CONTINUE_ON_ERROR=$(     [[ "${{ inputs.continue-on-error }}" == *cs*     ]] && echo "true" || : )
+        TEST_EVAL_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *eval*   ]] && echo "true" || : )
+        TEST_FLASH_CONTINUE_ON_ERROR=$(  [[ "${{ inputs.continue-on-error }}" == *flash*  ]] && echo "true" || : )
+        TEST_HL_CONTINUE_ON_ERROR=$(     [[ "${{ inputs.continue-on-error }}" == *hl*     ]] && echo "true" || : )
+        TEST_JAVA_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *java*   ]] && echo "true" || : )
+        TEST_JVM_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *jvm*    ]] && echo "true" || : )
+        TEST_LUA_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *lua*    ]] && echo "true" || : )
+        TEST_NEKO_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *neko*   ]] && echo "true" || : )
+        TEST_NODE_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *node*   ]] && echo "true" || : )
+        TEST_PHP_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *php*    ]] && echo "true" || : )
+        TEST_PYTHON_CONTINUE_ON_ERROR=$( [[ "${{ inputs.continue-on-error }}" == *python* ]] && echo "true" || : )
+        EOF
+        
 
     ##################################################
     # Cache Restore
@@ -179,6 +198,7 @@ runs:
 
     - name: "Setup: Haxe with Targets"
       id: setup-haxe-targets
+      if: ${{ inputs.setup-targets == 'true' }}
       uses: ./.github/haxe-reusable-workflows/.github/actions/setup-haxe-targets
       with:
         setup-cpp:    ${{ env.TEST_CPP    != 'false' }}
@@ -333,6 +353,7 @@ runs:
 
     - name: Test [neko]
       if: ${{ env.TEST_NEKO != 'false' }}
+      continue-on-error: ${{ env.TEST_NEKO_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run:  |
         echo "::group::Test [neko]"
@@ -345,6 +366,7 @@ runs:
 
     - name: Test [hl]
       if: ${{ env.TEST_HL != 'false' }}
+      continue-on-error: ${{ env.TEST_HL_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [hl]"
@@ -357,6 +379,7 @@ runs:
 
     - name: Test [eval]
       if: ${{ env.TEST_EVAL != 'false' }}
+      continue-on-error: ${{ env.TEST_EVAL_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [eval]"
@@ -368,6 +391,7 @@ runs:
 
     - name: Test [flash]
       if: ${{ env.TEST_FLASH != 'false' }}
+      continue-on-error: ${{ env.TEST_FLASH_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [flash]"
@@ -396,6 +420,7 @@ runs:
 
     - name: Test [java]
       if: ${{ env.TEST_JAVA != 'false' }}
+      continue-on-error: ${{ env.TEST_JAVA_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [java]"
@@ -408,6 +433,7 @@ runs:
 
     - name: Test [jvm]
       if: ${{ env.TEST_JVM != 'false' }}
+      continue-on-error: ${{ env.TEST_JVM_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [jvm]"
@@ -420,8 +446,8 @@ runs:
 
     - name: Test [lua]
       if: ${{ env.TEST_LUA != 'false' }}
+      continue-on-error: ${{ env.TEST_LUA_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
-      continue-on-error: ${{ runner.os != 'Linux' }}
       run: |
         echo "::group::Test [lua]"
         set -eux
@@ -433,6 +459,7 @@ runs:
 
     - name: Test [node]
       if: ${{ env.TEST_NODE != 'false' }}
+      continue-on-error: ${{ env.TEST_NODE_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [node]"
@@ -445,6 +472,7 @@ runs:
 
     - name: Test [php]
       if: ${{ env.TEST_PHP != 'false' }}
+      continue-on-error: ${{ env.TEST_PHP_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [php]"
@@ -457,6 +485,7 @@ runs:
 
     - name: Test [python]
       if: ${{ env.TEST_PYTHON != 'false' }}
+      continue-on-error: ${{ env.TEST_PYTHON_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [python]"
@@ -468,6 +497,7 @@ runs:
 
     - name: Test [cs]
       if: ${{ env.TEST_CS != 'false' }}
+      continue-on-error: ${{ env.TEST_CS_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [cs]"
@@ -480,6 +510,7 @@ runs:
 
     - name: Test [cpp] # testing C++ as last since it takes the longest to build
       if: ${{ env.TEST_CPP != 'false' }}
+      continue-on-error: ${{ env.TEST_CPP_CONTINUE_ON_ERROR == 'true' }}
       shell: bash
       run: |
         echo "::group::Test [cpp]"

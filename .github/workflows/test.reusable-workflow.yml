@@ -80,3 +80,23 @@ jobs:
       debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
       debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
       debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-for-actor }}
+
+  test-reusable-workflow-continue-on-error:
+    uses: ./.github/workflows/reusable.test-with-haxe.yml
+    with:
+      runner-os: ubuntu-latest
+      haxe-version: latest
+      hxml-file: -cp src -main MainWithError
+      continue-on-error: cpp cs eval flash hl java jvm lua neko node php python
+      test-cpp: true
+      test-cs: true
+      test-eval: true
+      test-flash: ${{ !startsWith(matrix.os, 'macos') && 'tests-flash.hxml' || false }} # FlashPlayer hangs on MacOS
+      test-hl: true
+      test-java: true
+      test-jvm: true
+      test-lua: true
+      test-neko: true
+      test-node: true
+      test-php: true
+      test-python: true

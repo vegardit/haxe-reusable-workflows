@@ -26,6 +26,8 @@ on:
       test-php:    { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
       test-python: { default: "false", type: string, description: "To enable specify 'true' or the path to a .hxml file" }
 
+      continue-on-error: { required: false, type: string, description: "A space or comma separated list of haxe targets which are allowed to fail" }
+
       timeout-minutes-test: { default: 10, type: number, description: "The maximum number of minutes a test can run before it is terminated." }
       timeout-minutes:      { default: 60, type: number, description: "The maximum number of minutes the build job shall run." }
 
@@ -71,6 +73,21 @@ jobs:
         TEST_NODE=${{   inputs.test-node }}
         TEST_PHP=${{    inputs.test-php }}
         TEST_PYTHON=${{ inputs.test-python }}
+        EOF
+
+        cat <<EOF >> $GITHUB_ENV
+        TEST_CPP_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *cpp*    ]] && echo "true" || : )
+        TEST_CS_CONTINUE_ON_ERROR=$(     [[ "${{ inputs.continue-on-error }}" == *cs*     ]] && echo "true" || : )
+        TEST_EVAL_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *eval*   ]] && echo "true" || : )
+        TEST_FLASH_CONTINUE_ON_ERROR=$(  [[ "${{ inputs.continue-on-error }}" == *flash*  ]] && echo "true" || : )
+        TEST_HL_CONTINUE_ON_ERROR=$(     [[ "${{ inputs.continue-on-error }}" == *hl*     ]] && echo "true" || : )
+        TEST_JAVA_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *java*   ]] && echo "true" || : )
+        TEST_JVM_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *jvm*    ]] && echo "true" || : )
+        TEST_LUA_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *lua*    ]] && echo "true" || : )
+        TEST_NEKO_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *neko*   ]] && echo "true" || : )
+        TEST_NODE_CONTINUE_ON_ERROR=$(   [[ "${{ inputs.continue-on-error }}" == *node*   ]] && echo "true" || : )
+        TEST_PHP_CONTINUE_ON_ERROR=$(    [[ "${{ inputs.continue-on-error }}" == *php*    ]] && echo "true" || : )
+        TEST_PYTHON_CONTINUE_ON_ERROR=$( [[ "${{ inputs.continue-on-error }}" == *python* ]] && echo "true" || : )
         EOF
 
     - name: Show environment variables
@@ -332,6 +349,7 @@ jobs:
 
     - name: Test [neko]
       if: ${{ env.TEST_NEKO != 'false' }}
+      continue-on-error: ${{ env.TEST_NEKO_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run:  |
         set -eux
@@ -342,6 +360,7 @@ jobs:
 
     - name: Test [hl]
       if: ${{ env.TEST_HL != 'false' }}
+      continue-on-error: ${{ env.TEST_HL_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -352,6 +371,7 @@ jobs:
 
     - name: Test [eval]
       if: ${{ env.TEST_EVAL != 'false' }}
+      continue-on-error: ${{ env.TEST_EVAL_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -361,6 +381,7 @@ jobs:
 
     - name: Test [flash]
       if: ${{ env.TEST_FLASH != 'false' }}
+      continue-on-error: ${{ env.TEST_FLASH_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -387,6 +408,7 @@ jobs:
 
     - name: Test [java]
       if: ${{ env.TEST_JAVA != 'false' }}
+      continue-on-error: ${{ env.TEST_JAVA_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -397,6 +419,7 @@ jobs:
 
     - name: Test [jvm]
       if: ${{ env.TEST_JVM != 'false' }}
+      continue-on-error: ${{ env.TEST_JVM_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -407,7 +430,7 @@ jobs:
 
     - name: Test [lua]
       if: ${{ env.TEST_LUA != 'false' }}
-      continue-on-error: ${{ runner.os != 'Linux' }}
+      continue-on-error: ${{ env.TEST_LUA_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -418,6 +441,7 @@ jobs:
 
     - name: Test [node]
       if: ${{ env.TEST_NODE != 'false' }}
+      continue-on-error: ${{ env.TEST_NODE_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -428,6 +452,7 @@ jobs:
 
     - name: Test [php]
       if: ${{ env.TEST_PHP != 'false' }}
+      continue-on-error: ${{ env.TEST_PHP_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -438,6 +463,7 @@ jobs:
 
     - name: Test [python]
       if: ${{ env.TEST_PYTHON != 'false' }}
+      continue-on-error: ${{ env.TEST_PYTHON_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -448,6 +474,7 @@ jobs:
 
     - name: Test [cs]
       if: ${{ env.TEST_CS != 'false' }}
+      continue-on-error: ${{ env.TEST_CS_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux
@@ -458,6 +485,7 @@ jobs:
 
     - name: Test [cpp] # testing C++ as last since it takes the longest to build
       if: ${{ env.TEST_CPP != 'false' }}
+      continue-on-error: ${{ env.TEST_CPP_CONTINUE_ON_ERROR == 'true' }}
       timeout-minutes: ${{ inputs.timeout-minutes-test }}
       run: |
         set -eux

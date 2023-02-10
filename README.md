@@ -113,6 +113,8 @@ jobs:
       test-php:    true
       test-python: true
 
+      continue-on-error: flash php # a list of targets that are allowed to fail
+
       timeout-minutes: 30     # max. duration of the workflow, default is 60
       timeout-minutes-test: 5 # max. duration per target test, default is 10
 
@@ -228,10 +230,12 @@ jobs:
         test-java:   true
         test-jvm:    true
         test-lua:    true
+        test-neko:   true
         test-node:   tests-node.hxml  # run tests with a target specific hxml file
-        test-node:   true
         test-php:    true
         test-python: true
+
+        continue-on-error: flash php # a list of targets that are allowed to fail
 
       # bash script to be executed after compiler targets are installed and before target tests are executed
       before-tests: |
