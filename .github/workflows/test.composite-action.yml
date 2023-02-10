@@ -100,7 +100,7 @@ jobs:
         haxe-reusable-workflows-version: ${{ github.ref }}
 
         haxe-version: ${{ matrix.haxe }}
-        hxml-file: -cp src -main MainWithError
+        haxe-args: -cp src -main MainWithError
         continue-on-error: cpp cs eval flash hl java jvm lua neko node php python
         setup-targets: false
         test-cpp: true

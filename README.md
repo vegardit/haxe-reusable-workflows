@@ -45,7 +45,7 @@ jobs:
     with:
       runner-os: ubuntu-latest
       haxe-version: 4.2.5
-      hxml-file: myconfig.hxml # default is "tests.hxml"
+      haxe-args: myconfig.hxml # default is "tests.hxml"
       haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
       # Haxe targets to test with:
@@ -96,7 +96,7 @@ jobs:
     with:
       runner-os: ${{ matrix.os }}
       haxe-version: ${{ matrix.haxe }}
-      hxml-file: myconfig.hxml # default is "tests.hxml"
+      haxe-args: myconfig.hxml # default is "tests.hxml"
       haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
       # Haxe targets to test with, by default all are set to false:
@@ -109,7 +109,7 @@ jobs:
       test-jvm:    true
       test-lua:    true
       test-neko:   true
-      test-node:   tests-node.hxml  # run tests with a target specific hxml file
+      test-node:   tests-node.hxml # run tests with a target specific hxml file
       test-php:    true
       test-python: true
 
@@ -159,7 +159,7 @@ jobs:
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
       with:
         haxe-version: 4.2.5
-        hxml-file: myconfig.hxml # default is "tests.hxml"
+        haxe-args: myconfig.hxml # default is "tests.hxml"
         haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
         # Haxe targets to test with:
@@ -218,7 +218,7 @@ jobs:
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
       with:
         haxe-version: ${{ matrix.haxe }}
-        hxml-file: myconfig.hxml # default is "tests.hxml"
+        haxe-args: myconfig.hxml # default is "tests.hxml"
         haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
 
         # Haxe targets to test with, by default all are set to false:
@@ -231,7 +231,7 @@ jobs:
         test-jvm:    true
         test-lua:    true
         test-neko:   true
-        test-node:   tests-node.hxml  # run tests with a target specific hxml file
+        test-node:   tests-node.hxml # run tests with a target specific hxml file
         test-php:    true
         test-python: true
 

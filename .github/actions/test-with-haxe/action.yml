@@ -8,7 +8,7 @@ description: Sets up Haxe, the required compiler targets and runs tests
 inputs:
   haxe-version: { required: true,        description: "Haxe version to test with" }
   haxe-libs:    { required: false,       description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
-  hxml-file:    { default: "tests.hxml", description: "default .hxml file to use" }
+  haxe-args:    { default: "tests.hxml", description: "default .hxml file to use" }
   output-dir:   { default: "target",     description: "output folder for compilation artifacts"}
 
   test-cpp:    { default: "false", description: "To enable specify 'true' or the path to a .hxml file" }
@@ -359,7 +359,7 @@ runs:
         echo "::group::Test [neko]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_NEKO != "true" ]] && hxmlFile=$TEST_NEKO || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_NEKO != "true" ]] && hxmlFile=$TEST_NEKO || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -neko ${{ inputs.output-dir }}/tests.n
         neko ${{ inputs.output-dir }}/tests.n
         echo "::endgroup::"
@@ -372,7 +372,7 @@ runs:
         echo "::group::Test [hl]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_HL != "true" ]] && hxmlFile=$TEST_HL || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_HL != "true" ]] && hxmlFile=$TEST_HL || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -hl ${{ inputs.output-dir }}/tests.hl
         hl ${{ inputs.output-dir }}/tests.hl
         echo "::endgroup::"
@@ -385,7 +385,7 @@ runs:
         echo "::group::Test [eval]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_EVAL != "true" ]] && hxmlFile=$TEST_EVAL || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_EVAL != "true" ]] && hxmlFile=$TEST_EVAL || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -D eval-stack --interp
         echo "::endgroup::"
 
@@ -397,7 +397,7 @@ runs:
         echo "::group::Test [flash]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_FLASH != "true" ]] && hxmlFile=$TEST_FLASH || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_FLASH != "true" ]] && hxmlFile=$TEST_FLASH || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -swf ${{ inputs.output-dir }}/tests.swf
 
         # workaround for random "Application crashed with an unhandled SIGSEGV"
@@ -426,7 +426,7 @@ runs:
         echo "::group::Test [java]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_JAVA != "true" ]] && hxmlFile=$TEST_JAVA || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_JAVA != "true" ]] && hxmlFile=$TEST_JAVA || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -java ${{ inputs.output-dir }}
         java -jar ${{ inputs.output-dir }}/*.jar
         echo "::endgroup::"
@@ -439,7 +439,7 @@ runs:
         echo "::group::Test [jvm]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_JVM != "true" ]] && hxmlFile=$TEST_JVM || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_JVM != "true" ]] && hxmlFile=$TEST_JVM || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -D jvm -java ${{ inputs.output-dir }}
         java -jar ${{ inputs.output-dir }}/*.jar
         echo "::endgroup::"
@@ -452,7 +452,7 @@ runs:
         echo "::group::Test [lua]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_LUA != "true" ]] && hxmlFile=$TEST_LUA || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_LUA != "true" ]] && hxmlFile=$TEST_LUA || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -lua ${{ inputs.output-dir }}/tests.lua
         lua ${{ inputs.output-dir }}/tests.lua
         echo "::endgroup::"
@@ -465,7 +465,7 @@ runs:
         echo "::group::Test [node]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_NODE != "true" ]] && hxmlFile=$TEST_NODE || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_NODE != "true" ]] && hxmlFile=$TEST_NODE || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -lib hxnodejs -D nodejs -js ${{ inputs.output-dir }}/tests.js
         node ${{ inputs.output-dir }}/tests.js
         echo "::endgroup::"
@@ -478,7 +478,7 @@ runs:
         echo "::group::Test [php]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_PHP != "true" ]] && hxmlFile=$TEST_PHP || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_PHP != "true" ]] && hxmlFile=$TEST_PHP || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -php ${{ inputs.output-dir }}/php
         php ${{ inputs.output-dir }}/php/index.php
         echo "::endgroup::"
@@ -491,7 +491,7 @@ runs:
         echo "::group::Test [python]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_PYTHON != "true" ]] && hxmlFile=$TEST_PYTHON || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_PYTHON != "true" ]] && hxmlFile=$TEST_PYTHON || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -python ${{ inputs.output-dir }}/tests.py
         python ${{ inputs.output-dir }}/tests.py
 
@@ -503,7 +503,7 @@ runs:
         echo "::group::Test [cs]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_CS != "true" ]] && hxmlFile=$TEST_CS || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_CS != "true" ]] && hxmlFile=$TEST_CS || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -cs ${{ inputs.output-dir }}/cs
         mono ${{ inputs.output-dir }}/cs/bin/*.exe
         echo "::endgroup::"
@@ -516,7 +516,7 @@ runs:
         echo "::group::Test [cpp]"
         set -eux
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_CPP != "true" ]] && hxmlFile=$TEST_CPP || hxmlFile="${{ inputs.hxml-file }}"
+        [[ $TEST_CPP != "true" ]] && hxmlFile=$TEST_CPP || hxmlFile="${{ inputs.haxe-args }}"
         haxe $hxmlFile -cpp ${{ inputs.output-dir }}/cpp
         if [[ $OSTYPE == "darwin"* ]]; then
           executableFilterFlag="-perm +111"
