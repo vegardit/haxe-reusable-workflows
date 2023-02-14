@@ -1,0 +1,152 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe
+description: Installs and configures the Haxe compiler
+
+inputs:
+  haxe-version:
+    default: latest
+    description: "Version of Haxe to install (nightly, latest or a version number)"
+
+  # internal:
+  haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
+  haxe-reusable-workflows-version: { default: "v1", description: "Version of the setup-haxe-targets action" }
+
+runs:
+  using: "composite"
+  steps:
+    # workaround to determine job_workflow_ref / job_workflow_sha to run the local actions from the same branch as this workflow
+    # - https://stackoverflow.com/questions/71046096/reusable-workflows-with-local-actions
+    # - https://github.com/community/community/discussions/31054
+    - name: "Git checkout workflow repo"
+      if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
+      uses: actions/checkout@v3
+      with:
+        path: ./.github/temp/haxe-reusable-workflows
+        repository: ${{ inputs.haxe-reusable-workflows-repo }}
+        ref: ${{ inputs.haxe-reusable-workflows-version }}
+        token: ${{ github.token }}
+    - name: "Git checkout workflow repo"
+      if: env.ACT == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ -f ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe-targets/action.yaml ]]; then
+          echo "nothing to do"
+        else
+          rm -rf ./.github/temp/haxe-reusable-workflows
+          mkdir -p ./.github/temp
+          if [[ -f ./.github/actions/setup-haxe-targets/action.yml ]]; then
+            (set -x; ln -s "$PWD" ./.github/temp/haxe-reusable-workflows)
+          else
+            # checkout "actions/checkout@v3" fails with "using ::error::Input required and not supplied: token", so we do it old school
+            (set -x; git clone "https://github.com/${{ inputs.haxe-reusable-workflows-repo }}" \
+               --depth 1 --single-branch \
+               -b "${{ inputs.haxe-reusable-workflows-version }}" \
+               ./.github/temp/haxe-reusable-workflows)
+          fi
+        fi
+
+    - name: "Install: Neko"
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-neko
+      with:
+        neko-version: ${{ startsWith(inputs.haxe-version, '3.') && '2.1.0' || 'latest' }}
+
+    - name: "Setup Haxe: Cache"
+      if: ${{ env.ACT != 'true' && inputs.haxe.version != 'nightly' }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache@v3 # https://github.com/actions/cache
+      with:
+        path: ${{ runner.temp }}/haxe/sdk/haxe-${{ inputs.haxe-version }}
+        key: ${{ runner.os }}-haxe-${{ inputs.haxe-version }}
+
+    - name: "Setup Haxe: Install Binaries"
+      shell: bash
+      env:
+        HAXE_HOME: ${{ runner.temp }}/haxe/sdk/haxe-${{ inputs.haxe-version }}
+        HAXE_VERSION: ${{ inputs.haxe-version }}
+      run: |
+        echo "::group::Setup Haxe: Install Binaries"
+        set -euox pipefail
+
+        if [[ -n "${{ github.token }}" ]]; then
+          auth_header='-H "Authorization: token ${{ github.token }}"'
+        fi
+        
+        export PATH="$HAXE_HOME:$PATH"
+
+        case "${{ runner.os }}" in
+          Linux)
+            if [[ ! -f "$HAXE_HOME/haxe" ]]; then
+              rm -rf "$HAXE_HOME"
+              if [[ $HAXE_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-linux64.tar.gz" | head -n 1)
+              elif [[ $HAXE_VERSION == 'nightly' ]]; then
+                archive_url="https://build.haxe.org/builds/haxe/linux64/haxe_latest.tar.gz"
+              else
+                archive_url="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-linux64.tar.gz"
+              fi
+              mkdir -p "$HAXE_HOME"
+              $(set -x; curl -sSfL $archive_url | tar -xz --strip-components=1 -C "$HAXE_HOME")
+            fi
+            echo "$HAXE_HOME" >> "$GITHUB_PATH"
+            echo "HAXEPATH=$HAXE_HOME" | tee -a "$GITHUB_ENV"
+            echo "HAXE_STD_PATH=$HAXE_HOME/std" | tee -a "$GITHUB_ENV"
+
+            (set -x; haxelib setup $HAXE_HOME/lib)
+            ;;
+          macOS)
+            if [[ ! -f "$HAXE_HOME/haxe" ]]; then
+              rm -rf "$HAXE_HOME"
+              if [[ $HAXE_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-osx.tar.gz" | head -n 1)
+              elif [[ $HAXE_VERSION == 'nightly' ]]; then
+                archive_url="https://build.haxe.org/builds/haxe/mac/haxe_latest.tar.gz"
+              else
+                archive_url="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-osx.tar.gz"
+              fi
+              mkdir -p "$HAXE_HOME"
+              $(set -x; curl -sSfL $archive_url | tar -xz --strip-components=1 -C "$HAXE_HOME")
+            fi
+            echo "$HAXE_HOME" >> "$GITHUB_PATH"
+            echo "HAXEPATH=$HAXE_HOME" | tee -a "$GITHUB_ENV"
+            echo "HAXE_STD_PATH=$HAXE_HOME/std" | tee -a "$GITHUB_ENV"
+            
+            ln -sfv "$(dirname $(which neko))/libneko.2.dylib" "$HAXE_HOME/libneko.2.dylib" # workaround for "dyld: Library not loaded: @rpath/libneko.2.dylib"
+            (set -x; haxelib setup $HAXE_HOME/lib)
+            ;;
+          Windows)
+            HAXE_HOME=$(cygpath "$HAXE_HOME")
+            if [[ ! -f "$HAXE_HOME/haxe.exe" ]]; then
+              rm -rf "$HAXE_HOME"
+              if [[ $HAXE_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-win64.zip" | head -n 1)
+              elif [[ $HAXE_VERSION == 'nightly' ]]; then
+                archive_url="https://build.haxe.org/builds/haxe/windows64/haxe_latest.zip"
+              elif [[ $HAXE_VERSION == 3.* ]]; then  
+                # Haxe 3 requires Neko 2.1 for which only 32bit binaries are available
+                archive_url="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win.zip"
+              else
+                archive_url="https://github.com/HaxeFoundation/haxe/releases/download/${HAXE_VERSION}/haxe-${HAXE_VERSION}-win64.zip"
+              fi
+              mkdir -p "$HAXE_HOME"
+              $(set -x; curl -sSfL $archive_url -o "$HOME/haxe.zip")
+              unzip -q "$HOME/haxe.zip" -d "$HOME"
+              mv "$HOME/haxe"*/* "$HAXE_HOME"
+            fi
+            echo "$(cygpath -w "$HAXE_HOME")" >> "$GITHUB_PATH"
+            echo "HAXEPATH=$(cygpath -w "$HAXE_HOME")" | tee -a "$GITHUB_ENV"
+            echo "HAXE_STD_PATH=$(cygpath -w "$HAXE_HOME/std")" | tee -a "$GITHUB_ENV"
+            
+            (set -x; haxelib setup "$(cygpath "$HAXE_HOME")\\lib")
+            ;;
+        esac
+
+        echo "::endgroup::"
+
+    - name: "Setup Haxe: Verify PATH"
+      shell: bash
+      run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
+

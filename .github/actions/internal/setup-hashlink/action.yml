@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Hashlink: Cache"
-      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      if: ${{ env.ACT != 'true' }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache@v3 # https://github.com/actions/cache
       with:
         path: ${{ inputs.cache-folder }}
@@ -25,11 +25,6 @@ runs:
       shell: bash
       env:
         CACHE_FOLDER: ${{ inputs.cache-folder }}
-        # https://docs.brew.sh/Manpage#environment
-        HOMEBREW_NO_ANALYTICS: "1"
-        HOMEBREW_NO_AUTO_UPDATE: "1"
-        HOMEBREW_NO_INSTALL_CLEANUP: "1"
-        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
       run: |
         echo "::group::Setup Hashlink: Install Binaries"
         set -euox pipefail
@@ -51,7 +46,21 @@ runs:
               echo "$hashlink_home" >> "$GITHUB_PATH"
               ;;
             macOS)
-              brew install hashlink
+              hashlink_home=$CACHE_FOLDER
+              mkdir -p "$hashlink_home"
+              if [[ ! -f "$hashlink_home/hl" ]]; then
+                rm -rf "$hashlink_home"
+                if [[ -n "${{ github.token }}" ]]; then
+                  auth_header='-H "Authorization: token ${{ github.token }}"'
+                fi
+                latest_url=$(eval curl -fsSL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*-darwin.tar.gz")
+                mkdir -p "$hashlink_home"
+                curl -sSfL $latest_url | tar -xz --strip-components=1 -C "$hashlink_home"
+              fi
+              echo "$hashlink_home" >> "$GITHUB_PATH"
+              
+              #workaround for: dyld[4058]: Library not loaded: 'libhl.dylib'
+              install_name_tool -change libhl.dylib $hashlink_home/libhl.dylib $hashlink_home/hl
               ;;
             Windows)
               hashlink_home=$(cygpath "$CACHE_FOLDER")
@@ -69,6 +78,7 @@ runs:
               echo "$(cygpath -w "$hashlink_home")" >> "$GITHUB_PATH"
               ;;
           esac
+          (set -x; ls -l $hashlink_home)
         fi
         echo "::endgroup::"
 

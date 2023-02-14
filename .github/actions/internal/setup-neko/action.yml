@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Neko Target
+description: Installs and configures the Haxe compiler target Neko
+
+inputs:
+  neko-version:
+    default: latest
+    description: "Version of Neko to install"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Neko: Cache"
+      if: ${{ env.ACT != 'true' }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache@v3 # https://github.com/actions/cache
+      with:
+        path: ${{ runner.temp }}/haxe/targets/neko-${{ inputs.neko-version }}
+        key: ${{ runner.os }}-neko-${{ inputs.neko-version }}
+
+    - name: "Setup Neko: Install Binaries"
+      shell: bash
+      env:
+        NEKO_HOME: ${{ runner.temp }}/haxe/targets/neko-${{ inputs.neko-version }}
+        NEKO_VERSION: ${{ inputs.neko-version }}
+      run: |
+        echo "::group::Setup Neko: Install Binaries"
+        set -euo pipefail
+
+        if [[ -n "${{ github.token }}" ]]; then
+          auth_header='-H "Authorization: token ${{ github.token }}"'
+        fi
+
+        case "${{ runner.os }}" in
+          Linux)
+            if [[ ! -f "$NEKO_HOME/neko" ]]; then
+              rm -rf "$NEKO_HOME"
+              if [[ $NEKO_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-linux64.tar.gz" | head -n 1)
+              else
+                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-linux64.tar.gz"
+              fi
+              mkdir -p "$NEKO_HOME"
+              $(set -x; curl -sSfL $archive_url | tar -xz --strip-components=1 -C "$NEKO_HOME")
+            fi
+            echo "$NEKO_HOME" >> "$GITHUB_PATH"
+            echo "NEKOPATH=$NEKO_HOME" | tee -a "$GITHUB_ENV"
+            
+            #workaround for: neko: error while loading shared libraries: libneko.so: cannot open shared object file: No such file or directory
+            echo "LD_LIBRARY_PATH=$NEKO_HOME:${LD_LIBRARY_PATH:-}" | tee -a "$GITHUB_ENV"
+            ;;
+          macOS)
+            if [[ ! -f "$NEKO_HOME/neko" ]]; then
+              rm -rf "$NEKO_HOME"
+              if [[ $NEKO_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-osx64.tar.gz" | head -n 1)
+              else
+                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-osx64.tar.gz"
+              fi
+              mkdir -p "$NEKO_HOME"
+              $(set -x; curl -sSfL $archive_url | tar -xz --strip-components=1 -C "$NEKO_HOME")
+            fi
+            echo "$NEKO_HOME" >> "$GITHUB_PATH"
+            echo "NEKOPATH=$NEKO_HOME" | tee -a "$GITHUB_ENV"
+            ;;
+          Windows)
+            NEKO_HOME=$(cygpath "$NEKO_HOME")
+            if [[ ! -f "$NEKO_HOME/neko.exe" ]]; then
+              rm -rf "$NEKO_HOME"
+              if [[ $NEKO_VERSION == 'latest' ]]; then
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-win64.zip" | head -n 1)
+              elif [[ ${NEKO_VERSION//./} -lt 220 ]]; then
+                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-win.zip"
+              else
+                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-win64.zip"
+              fi
+              mkdir -p "$NEKO_HOME"
+              $(set -x; curl -sSfL $archive_url -o "$HOME/neko.zip")
+              unzip "$HOME/neko.zip" -d "$HOME"
+              mv "$HOME/neko-"*/* "$NEKO_HOME"
+            fi
+            echo "$(cygpath -w "$NEKO_HOME")" >> "$GITHUB_PATH"
+            echo "NEKOPATH=$(cygpath -w "$NEKO_HOME")" | tee -a "$GITHUB_ENV"
+            ;;
+        esac
+
+        (set -x; ls -l $NEKO_HOME)
+        echo "::endgroup::"
+
+    - name: "Setup Neko: Verify PATH"
+      shell: bash
+      run: neko -version

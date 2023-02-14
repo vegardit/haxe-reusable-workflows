@@ -54,7 +54,6 @@ jobs:
       uses: actions/checkout@v3 #https://github.com/actions/checkout
 
     - name: "Install: Haxe compiler targets"
-      id: setup-haxe-targets
       uses: ./.github/actions/setup-haxe-targets
       with:
         haxe-reusable-workflows-repo:    ${{ github.repository }}

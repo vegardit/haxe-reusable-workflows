@@ -91,7 +91,8 @@ jobs:
         - macos-latest
         - windows-latest
         haxe:
-        - latest
+        - nightly # latest development build
+        - latest  # latest stable release
         - 4.2.5
         - 3.4.7
     with:
@@ -212,7 +213,8 @@ jobs:
         - macos-latest
         - windows-latest
         haxe:
-        - latest
+        - nightly # latest development build
+        - latest  # latest stable release
         - 4.2.5
         - 3.4.7
 
@@ -276,7 +278,8 @@ jobs:
         - macos-latest
         - windows-latest
         haxe:
-        - latest
+        - nightly # latest development build
+        - latest  # latest stable release
         - 4.2.5
         - 3.4.7
 
@@ -298,7 +301,7 @@ jobs:
         setup-python: true  # or a Python version, e.g. "3.11"
 
     - name: "Install: Haxe ${{ matrix.haxe }}"
-      uses: krdlab/setup-haxe@v1
+      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
       with:
         haxe-version: ${{ matrix.haxe }}
 

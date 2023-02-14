@@ -6,7 +6,7 @@
 name: Test with Haxe
 description: Sets up Haxe, the required compiler targets and runs tests
 inputs:
-  haxe-version: { required: true,        description: "Haxe version to test with" }
+  haxe-version: { default: "latest",     description: "Haxe to test with (nightly, latest or a version number)" }
   haxe-libs:    { required: false,       description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
   haxe-args:    { default: "tests.hxml", description: "Haxe compiler arguments" }
   output-dir:   { default: "target",     description: "output folder for compilation artifacts"}
@@ -33,8 +33,8 @@ inputs:
   setup-targets: { default: "true", description: "true or false. Controls if any compiler target should be setup at all. Useful if this action is executed multiple times in the same workflow." }
 
   # internal:
-  haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
-  haxe-reusable-workflows-version: { default: "v1", description: "Version of the setup-haxe-targets action" }
+  haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe action" }
+  haxe-reusable-workflows-version: { default: "v1", description: "Version of the setup-haxe action" }
 
 runs:
   using: "composite"
@@ -182,13 +182,11 @@ runs:
     # Install software
     ##################################################
     - name: "Install: Haxe ${{ matrix.haxe }}"
-      uses: krdlab/setup-haxe@v1 # https://github.com/krdlab/setup-haxe
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe
       with:
         haxe-version: ${{ inputs.haxe-version }}
-
-    - name: "Verify: Haxe"
-      shell: bash
-      run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
+        haxe-reusable-workflows-repo: ${{ inputs.haxe-reusable-workflows-repo }}
+        haxe-reusable-workflows-version: ${{ inputs.haxe-reusable-workflows-version }}
 
     - name: "Install: Haxe Libraries"
       shell: bash
@@ -212,7 +210,7 @@ runs:
 
         haxelibs="${{ inputs.haxe-libs }}"
         if [[ $TEST_CPP  == "true" ]]; then
-          if [[ "${{ inputs.haxe-version }}" == "latest" ]]; then
+          if [[ "${{ inputs.haxe-version }}" == "nightly" ]]; then
             echo "::group::install_hxcpp"
             (set -x; haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git)
             pushd "$HAXELIB_PATH/hxcpp/git/tools/hxcpp"

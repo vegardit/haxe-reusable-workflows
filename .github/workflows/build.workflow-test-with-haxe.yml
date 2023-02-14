@@ -46,7 +46,7 @@ jobs:
         - macos-latest
         - windows-latest
         haxe:
-        - latest
+        - nightly
         - 4.2.5
         - 3.4.7
     with:

@@ -8,7 +8,7 @@ on:
   workflow_call:
     inputs:
       runner-os:    { required: true,        type: string, description: "e.g. ubuntu-latest, macos-latest, windows-latest" }
-      haxe-version: { required: true,        type: string, description: "Haxe version to test with" }
+      haxe-version: { default: "latest",     type: string, description: "Haxe to test with (nightly, latest or a version number)" }
       haxe-libs:    { required: false,       type: string, description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
       haxe-args:    { default: "tests.hxml", type: string, description: "Haxe compiler arguments" }
       output-dir:   { default: "target",     type: string, description: "output folder for compilation artifacts"}
@@ -202,12 +202,11 @@ jobs:
     # Install software
     ##################################################
     - name: "Install: Haxe ${{ matrix.haxe }}"
-      uses: krdlab/setup-haxe@v1 # https://github.com/krdlab/setup-haxe
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe
       with:
         haxe-version: ${{ inputs.haxe-version }}
-
-    - name: "Verify: Haxe"
-      run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
+        haxe-reusable-workflows-repo: ${{ inputs.haxe-reusable-workflows-repo }}
+        haxe-reusable-workflows-version: ${{ inputs.haxe-reusable-workflows-version }}
 
     - name: "Install: Haxe Libraries"
       run: |
@@ -229,7 +228,7 @@ jobs:
 
         haxelibs="${{ inputs.haxe-libs }}"
         if [[ $TEST_CPP  == "true" ]]; then
-          if [[ "${{ inputs.haxe-version }}" == "latest" ]]; then
+          if [[ "${{ inputs.haxe-version }}" == "nightly" ]]; then
             echo "::group::install_hxcpp"
             (set -x; haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git)
             pushd "$HAXELIB_PATH/hxcpp/git/tools/hxcpp"
