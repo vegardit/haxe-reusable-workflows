@@ -228,7 +228,18 @@ jobs:
         haxelib config
 
         haxelibs="${{ inputs.haxe-libs }}"
-        if [[ $TEST_CPP  == "true" ]]; then haxelibs+=" hxcpp"; fi
+        if [[ $TEST_CPP  == "true" ]]; then
+          if [[ "${{ inputs.haxe-version }}" == "latest" ]]; then
+            echo "::group::install_hxcpp"
+            (set -x; haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git)
+            pushd "$HAXELIB_PATH/hxcpp/git/tools/hxcpp"
+              haxe compile.hxml
+            popd
+            echo "::endgroup::"
+          else
+            haxelibs+=" hxcpp"
+          fi
+        fi
         if [[ $TEST_CS   == "true" ]]; then haxelibs+=" hxcs"; fi
         if [[ $TEST_JAVA == "true" || $TEST_JVM == "true" ]]; then 
           if [[ "${{ inputs.haxe-version }}" == 3.* ]]; then
