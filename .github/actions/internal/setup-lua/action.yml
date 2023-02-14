@@ -1,0 +1,176 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Lua Target
+description: Installs and configures the Haxe compiler target Lua
+
+inputs:
+  lua-version: 
+    default: "5.3.6"
+    description: "Lua version"
+  cache-folder:
+    default: "${{ runner.temp}}/haxe/targets/lua"
+    description: Path to store downloaded installation files
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Lua: Cache"
+      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache@v3 # https://github.com/actions/cache
+      with:
+        path: ${{ inputs.cache-folder }}
+        key: ${{ runner.os }}-lua-${{ inputs.lua-version }}
+
+    - name: "Setup Lua: Install Binaries"
+      env:
+        CACHE_FOLDER: ${{ inputs.cache-folder }}
+        LUA_VERSION: ${{ inputs.lua-version }}
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+        GIT_CONFIG_COUNT: "1"
+        GIT_CONFIG_KEY_0: "advice.detachedHead" # suppress "You are in 'detached HEAD' state. You can look around, make experimental"
+        GIT_CONFIG_VALUE_0: "false"
+      shell: bash
+      run: |
+        set -euxo pipefail
+
+        LUA_HOME=$HOME/lua
+        lualibs=
+        lualib_install_opts=
+        case "${{ runner.os }}" in
+          Windows)
+            echo "::group::Setup Lua: Show compiler config"
+              which gcc --all
+              gcc --version
+
+              which ld --all
+              ld --version
+
+              # Linker Search Path
+              ld --verbose | grep SEARCH_DIR | tr -s ';' \n
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Install hererocks"
+              if ! hash hererocks 2>/dev/null; then
+                pip install hererocks
+              fi
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Install Lua"
+              cache_folder=$(cygpath "$CACHE_FOLDER")
+              mkdir -p "$cache_folder"
+              if [[ ! -d $LUA_HOME/bin ]]; then
+                mkdir -p "$cache_folder/luarocks_downloads"
+                hererocks "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION -rlatest --target=mingw --downloads "$CACHE_FOLDER\\luarocks_downloads"
+              fi
+              echo "$(cygpath -w "$LUA_HOME/bin")" >> "$GITHUB_PATH"
+              export PATH="$LUA_HOME/bin:$PATH"
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Install mingw/pcre"
+              pushd "$CACHE_FOLDER"
+                pcre_pkg="mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst"
+                if [[ ! -f "$pcre_pkg" ]]; then
+                  rm -f mingw-*-pcre-*.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
+                fi
+
+                ls -l $pcre_pkg
+                zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
+                cp /bin/libpcre*.dll $LUA_HOME/bin
+                lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+              popd
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Install mingw/openssl"
+              pushd "$CACHE_FOLDER"
+                # https://github.com/brunoos/luasec/issues/150
+                openssl_pkg="mingw-w64-x86_64-openssl-1.1.1.s-1-any.pkg.tar.zst"
+                if [[ ! -f "$openssl_pkg" ]]; then
+                  rm -f mingw-*-openssl-*.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$openssl_pkg -o $openssl_pkg
+                fi
+
+                ls -l $openssl_pkg
+                zstd -d -c $openssl_pkg | tar -x --strip-components=1 -C /
+                cp /bin/libcrypto*.dll $LUA_HOME/bin
+                cp /bin/libssl*.dll $LUA_HOME/bin
+                lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
+              popd
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Patch luarocks/luasec"
+              curl -sSfL https://raw.githubusercontent.com/brunoos/luasec/master/luasec-1.2.0-1.rockspec | sed 's/32MD//g' > $HOME/luasec-1.2.0-1.rockspec
+              lualibs+=" $(cygpath -wa "$HOME/luasec-1.2.0-1.rockspec")"
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Patch luarocks/hx-lua-simdjson"
+              #lualibs+=" hx-lua-simdjson@0.0.1-1"
+              curl -sSfL https://raw.githubusercontent.com/inklit/hx-lua-simdjson/master/hx-lua-simdjson-0.0.1-0.rockspec | sed 's/tag = "0.0.2"/branch = "master"/' > $HOME/hx-lua-simdjson-0.0.1-0.rockspec
+              lualibs+=" $(cygpath -wa "$HOME/hx-lua-simdjson-0.0.1-0.rockspec")"
+              if [[ ! -e lua.dll ]]; then
+                cp $LUA_HOME/bin/lua*.dll $LUA_HOME/bin/lua.dll 
+                cp $LUA_HOME/lib/liblua*.a $LUA_HOME/lib/lua.a
+              fi
+            echo "::endgroup::"
+
+            echo "::group::Setup Lua: Patch luarocks/environ"
+              #lualibs+=" environ@0.1.0-1" # for Haxe 3
+              # https://github.com/moteus/lua-environ/issues/1
+              curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $HOME/environ-0.1.0-1.rockspec
+              lualibs+=" $(cygpath -wa "$HOME/environ-0.1.0-1.rockspec")"
+            echo "::endgroup::"
+            ;;
+
+          *) # Linux/MacOS
+            echo "::group::Setup Lua: Install hererocks"
+              case "${{ runner.os }}" in
+                Linux) sudo apt-get install -y build-essential libpcre3-dev libssl-dev libreadline-dev cmake unzip ;;
+                macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
+              esac
+              if ! hash hererocks 2>/dev/null; then
+                pip install hererocks
+              fi
+            echo "::endgroup::"
+ 
+            echo "::group::Setup Lua: Install Lua"
+              mkdir -p $CACHE_FOLDER
+              if [[ ! -d $LUA_HOME/bin ]]; then
+                hererocks $LUA_HOME --lua $LUA_VERSION -rlatest --downloads "$CACHE_FOLDER/luarocks_downloads"
+              fi
+              echo "$LUA_HOME/bin" >> $GITHUB_PATH
+              export PATH="$LUA_HOME/bin:$PATH"
+            echo "::endgroup::"
+
+            lualibs+=" luasec@1.0.2-1"
+            lualibs+=" hx-lua-simdjson@0.0.1-1"
+            lualibs+=" environ@0.1.0-1" # for Haxe 3
+            ;;
+        esac
+
+        lualibs+=" lrexlib-pcre@2.9.1-1"
+        lualibs+=" luasocket@3.1.0-1"
+        lualibs+=" luautf8@0.1.1-1"
+        lualibs+=" luv@1.44.2-1"
+
+        for lib in $lualibs; do
+          echo "::group::Setup Lua: Install lualib $lib"
+            lib_name="${lib%%@*}"
+            lib_ver="${lib#*@}"
+            case "${{ runner.os }}" in
+              Windows) luarocks.bat install $lib_name $lib_ver ${lualib_install_opts:-} ;;
+              *)       luarocks     install $lib_name $lib_ver ${lualib_install_opts:-} ;;
+            esac
+          echo "::endgroup::"
+        done
+
+    - name: "Setup Lua: Verify PATH"
+      if: ${{ env.SETUP_LUA != 'false' }}
+      shell: bash
+      run: lua -v

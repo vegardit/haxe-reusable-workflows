@@ -1,0 +1,79 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe C# Target
+description: Installs and configures the Haxe compiler target C#
+
+inputs:
+  cache-folder:
+    default: "${{ runner.temp}}/haxe/targets/mono"
+    description: Path to store downloaded files
+  mono-version:
+    default: 6.12.0.182
+    description: Mono version to install
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup C#: Cache"
+      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache@v3 # https://github.com/actions/cache
+      with:
+        path: ${{ inputs.cache-folder }}
+        key: ${{ runner.os }}-mono-${{ inputs.mono-version }}
+
+    - name: "Setup C#: Install Mono"
+      shell: bash
+      env:
+        CACHE_FOLDER: ${{ inputs.cache-folder }}
+        MONO_VERSION: ${{ inputs.mono-version }}
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        echo "::group::Setup C#: Install Mono"
+        set -euox pipefail
+
+        installed_mono_version=$((mono --version 2>/dev/null || true) | head -n 1 | cut -d' ' -f5)
+        if [[ $installed_mono_version != "$MONO_VERSION" ]]; then
+          case "${{ runner.os }}" in
+            Linux)
+              sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+              os_release=$(lsb_release -cs)
+              if [[ $os_release == "jammy" ]]; then os_release=focal; fi
+              sudo apt-add-repository -y "deb https://download.mono-project.com/repo/ubuntu $os_release main"
+              sudo apt-get install -y "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
+              ;;
+            macOS)
+            
+              # not possible to easily install specific releases by version number, see https://itnext.io/how-to-install-an-older-brew-package-add141e58d32
+              # one needs to find the correct commit in the homebrew repo to do so
+              # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/2680713cb66fc2e52b945c66a942ffdf5254b5b1/Formula/mono.rb
+              brew install mono
+              ;;
+            Windows)
+              CACHE_FOLDER=$(cygpath "$CACHE_FOLDER")
+              mkdir -p "$CACHE_FOLDER"
+
+              monoMSI="$CACHE_FOLDER/mono-$MONO_VERSION.msi"
+              if [[ ! -f $monoMSI ]]; then
+                curl -sSfL https://download.mono-project.com/archive/${MONO_VERSION%.*}/windows-installer/mono-${MONO_VERSION}-x64-0.msi -o $monoMSI
+              fi
+              pushd $HOME
+                tail --follow=name --retry mono.log 2>/dev/null | dos2unix -f &
+                MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" cmd /c start /wait msiexec.exe /i "$(cygpath -w "$monoMSI")" /quiet /norestart /L*v mono.log
+                ps aux | grep "[t]ail --follow=name --retry mono.log" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
+              popd
+              echo "$(cygpath -w "$PROGRAMFILES/Mono/bin")" >> $GITHUB_PATH
+              ;;
+          esac
+        fi
+        echo "::endgroup::"
+
+    - name: "Setup C#: Verify PATH"
+      shell: bash
+      run: mono --version

@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe PHP Target
+description: Installs and configures the Haxe compiler target PHP
+
+inputs:
+  php-version: 
+    default: "7.4"
+    description: "PHP version"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup PHP: Install Binaries"
+      uses: shivammathur/setup-php@v2 # https://github.com/marketplace/actions/setup-php-action
+      env:
+        runner: ${{ env.ACT && 'self-hosted' || 'github' }}
+      with:
+        php-version: ${{ inputs.php-version }}
+        extensions: mbstring, xml
+
+    - name: "Setup PHP: Verify PATH"
+      shell: bash
+      run: php --version

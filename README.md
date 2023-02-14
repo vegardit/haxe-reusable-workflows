@@ -1,7 +1,7 @@
 # haxe-reusable-workflows
 
-[![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.reusable-workflow.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.reusable-workflow.yml)
-[![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.composite-action.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/test.composite-action.yml)
+[![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.workflow-test-with-haxe.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.workflow-test-with-haxe.yml)
+[![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.action-test-with-haxe.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.action-test-with-haxe.yml)
 [![License](https://img.shields.io/github/license/vegardit/haxe-reusable-workflows.svg?label=license)](#license)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
@@ -12,9 +12,10 @@
 1. [Usage](#usage)
   1. [Build/test using the `test-with-haxe` workflow](#test-with-haxe-workflow)
   1. [Build/test using the `test-with-haxe` action](#test-with-haxe-action)
-  1. [Install compiler targets using the `setup-haxe-targets` action](#setup-haxe-targets-action)
+  1. [Install Haxe compiler targets using the `setup-haxe-targets` action](#setup-haxe-targets-action)
   1. [Testing locally with `act`](#testing-locally)
 1. [License](#license)
+
 
 ## <a name="what-is-it"></a>What is it?
 
@@ -41,7 +42,7 @@ on:
 
 jobs:
   my-haxe-build:
-    uses: vegardit/haxe-reusable-workflows/.github/workflows/reusable.test-with-haxe.yml@v1
+    uses: vegardit/haxe-reusable-workflows/.github/workflows/test-with-haxe.yml@v1
     with:
       runner-os: ubuntu-latest
       haxe-version: 4.2.5
@@ -81,7 +82,7 @@ on:
 
 jobs:
   my-haxe-build:
-    uses: vegardit/haxe-reusable-workflows/.github/workflows/reusable.test-with-haxe.yml@v1
+    uses: vegardit/haxe-reusable-workflows/.github/workflows/test-with-haxe.yml@v1
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +104,12 @@ jobs:
       test-cpp:    true
       test-cs:     true
       test-eval:   true
-      test-flash:  ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+      test-flash: |
+        enabled:         ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+        haxe-args:       tests-flash.hxml
+        allow-failure:   true
+        retries:         4
+        timeout-minutes: 5
       test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
       test-java:   true
       test-jvm:    true
@@ -113,11 +119,10 @@ jobs:
       test-php:    true
       test-python: true
 
-      continue-on-error: flash php # a list of targets that are allowed to fail
       retries: 2 # number of additional retries in case a test run fails, default is 0
 
-      timeout-minutes: 30     # max. duration of the workflow, default is 60
-      timeout-minutes-test: 5 # max. duration per target test, default is 10
+      job-timeout-minutes: 30 # max. duration of the workflow, default is 60
+      test-timeout-minutes: 5 # max. duration per target test, default is 10
 
       # bash script to be executed after compiler targets are installed and before target tests are executed
       before-tests: |
@@ -226,7 +231,11 @@ jobs:
         test-cpp:    true
         test-cs:     true
         test-eval:   true
-        test-flash:  ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+        test-flash: |
+          enabled:       ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
+          allow-failure: true
+          haxe-args:     tests-flash.hxml
+          retries:       10
         test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
         test-java:   true
         test-jvm:    true
@@ -236,32 +245,18 @@ jobs:
         test-php:    true
         test-python: true
 
-        continue-on-error: flash php # a list of targets that are allowed to fail
         retries: 2 # number of additional retries in case a test run fails, default is 0
 
-      # bash script to be executed after compiler targets are installed and before target tests are executed
-      before-tests: |
-        echo "Preparing tests..."
-
-      # bash script to be executed after tests were executed
-      after-tests: |
-        case "$GITHUB_JOB_STATUS" in
-          success)   echo "Sending success report..." ;;
-          failure)   echo "Sending failure report..." ;;
-          cancelled) echo "Nothing to do, job cancelled" ;;
-          *)         echo "ERROR: Unexpected job status [$GITHUB_JOB_STATUS]"; exit 1 ;;
-        esac
-
-      # provide SSH access to the GitHub runner for manual debugging purposes
-      debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
-      debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
-      debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-jobs-matching }}
+        # provide SSH access to the GitHub runner for manual debugging purposes
+        debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
+        debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
+        debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-jobs-matching }}
 
     # other steps ...
 ```
 
 
-### <a name="setup-haxe-targets-action"></a>Install compiler targets using the `setup-haxe-targets` action
+### <a name="setup-haxe-targets-action"></a>Install Haxe compiler targets using the `setup-haxe-targets` action
 
 ```yaml
 name: My Haxe Build
@@ -293,15 +288,14 @@ jobs:
       id: setup-haxe-targets
       uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe-targets@v1
       with:
-        setup-cpp:    true
         setup-cs:     true
         setup-flash:  true
         setup-hl:     true
-        setup-java:   true  # or Java version, e.g. 11, 17
-        setup-lua:    true  # or Lua version, e.g. "5.3.6"
-        setup-node:   true  # or Node.js version, see https://github.com/actions/setup-node/#supported-version-syntax
-        setup-php:    true  # or PHP version, e.g. "7.4"
-        setup-python: true  # or Python version, e.g. "3.10"
+        setup-java:   true  # or a Java version, e.g. 11, 17
+        setup-lua:    true  # or a Lua version, e.g. "5.3.6"
+        setup-node:   true  # or a Node.js version, see https://github.com/actions/setup-node/#supported-version-syntax
+        setup-php:    true  # or a PHP version, e.g. "7.4"
+        setup-python: true  # or a Python version, e.g. "3.11"
 
     - name: "Install: Haxe ${{ matrix.haxe }}"
       uses: krdlab/setup-haxe@v1

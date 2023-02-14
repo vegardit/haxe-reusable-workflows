@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Hashlink Target
+description: Installs and configures the Haxe compiler target Hashlink
+
+inputs:
+  cache-folder:
+    default: "${{ runner.temp}}/haxe/targets/hashlink"
+    description: Path to store downloaded files
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Hashlink: Cache"
+      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      uses: actions/cache@v3 # https://github.com/actions/cache
+      with:
+        path: ${{ inputs.cache-folder }}
+        key: ${{ runner.os }}-hashlink-latest
+
+    - name: "Setup Hashlink: Install Binaries"
+      shell: bash
+      env:
+        CACHE_FOLDER: ${{ inputs.cache-folder }}
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        echo "::group::Setup Hashlink: Install Binaries"
+        set -euox pipefail
+
+        if ! hash hl 2>/dev/null; then
+          case "${{ runner.os }}" in
+            Linux)
+              hashlink_home=$CACHE_FOLDER
+              mkdir -p "$hashlink_home"
+              if [[ ! -f "$hashlink_home/hl" ]]; then
+                rm -rf "$hashlink_home"
+                if [[ -n "${{ github.token }}" ]]; then
+                  auth_header='-H "Authorization: token ${{ github.token }}"'
+                fi
+                latest_url=$(eval curl -fsSL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*-linux-amd64.tar.gz")
+                mkdir -p "$hashlink_home"
+                curl -sSfL $latest_url | tar -xz --strip-components=1 -C "$hashlink_home"
+              fi
+              echo "$hashlink_home" >> "$GITHUB_PATH"
+              ;;
+            macOS)
+              brew install hashlink
+              ;;
+            Windows)
+              hashlink_home=$(cygpath "$CACHE_FOLDER")
+              mkdir -p "$hashlink_home"
+              if [[ ! -f "$hashlink_home/hl.exe" ]]; then
+                rm -rf "$hashlink_home"
+                if [[ -n "${{ github.token }}" ]]; then
+                  auth_header='-H "Authorization: token ${{ github.token }}"'
+                fi
+                latest_url=$(eval curl -fsSL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*win64.zip")
+                curl -sSfL $latest_url -o "$HOME/hashlink.zip"
+                unzip "$HOME/hashlink.zip" -d "$HOME"
+                mv "$HOME/hashlink-"* "$hashlink_home"
+              fi
+              echo "$(cygpath -w "$hashlink_home")" >> "$GITHUB_PATH"
+              ;;
+          esac
+        fi
+        echo "::endgroup::"
+
+    - name: "Setup Hashlink: Verify PATH"
+      shell: bash
+      run: hl --version

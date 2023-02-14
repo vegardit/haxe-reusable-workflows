@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Node Target
+description: Installs and configures the Haxe compiler target Node
+
+inputs:
+  node-version: 
+    default: "lts/*"
+    description: "Node.js version"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Node: Install Binaries"
+      uses: actions/setup-node@v3 # https://github.com/marketplace/actions/setup-node-js-environment
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: "Setup Node: Verify PATH"
+      shell: bash
+      run: node --version

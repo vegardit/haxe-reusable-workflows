@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Prepare OS
+description: Prepares the OS for installation compiler targets
+
+runs:
+  using: "composite"
+  steps:
+
+    ##################################################
+    # Prepare OS
+    ##################################################
+    - name: "Linux: Configure fast APT mirror"
+      uses: vegardit/fast-apt-mirror.sh@v1
+
+    - name: "MacOS: Update brew formulas"
+      if: runner.os == 'macOS'
+      shell: bash
+      env:
+        # https://docs.brew.sh/Manpage#environment
+        HOMEBREW_NO_ANALYTICS: "1"
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+        HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      run: |
+        echo "::group::MacOS: Update brew formulas"
+        set -euo pipefail
+
+        echo "::group::brew update" && brew update && echo "::endgroup::"
+        echo "::group::brew config" && brew config && echo "::endgroup::"
+        echo "::group::brew list" && brew list --version && echo "::endgroup::"
+
+        # workaround to prevent "Error: The `brew link` step did not complete successfully" during "brew install mono"
+        # and setup-python action, see https://github.com/actions/setup-python/issues/577
+        rm -f \
+          /usr/local/share/man/man1/* \
+          /usr/local/share/man/man5/* \
+          /usr/local/bin/idle3* \
+          /usr/local/bin/2to3* \
+          /usr/local/bin/idle3* \
+          /usr/local/bin/pydoc3* \
+          /usr/local/bin/python3* \
+          /usr/local/bin/python3-config*
+        echo "::endgroup::"
+
+    - name: "MacOS: launch fontd"
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # Workaround for:
+        # XType: failed to connect - Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.fonts was invalidated: failed at lookup with error 3 - No such process." 
+        #        UserInfo={NSDebugDescription=The connection to service named com.apple.fonts was invalidated: failed at lookup with error 3 - No such process.}
+        # Font server protocol version mismatch (expected:5 got:0), falling back to local fonts
+        # XType: unable to make a connection to the font daemon!
+        # XType: XTFontStaticRegistry is enabled as fontd is not available.
+        if ! pgrep fontd; then
+          sudo launchctl load -w /System/Library/LaunchAgents/com.apple.fontd.useragent.plist
+        fi

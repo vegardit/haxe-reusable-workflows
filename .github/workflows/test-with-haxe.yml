@@ -4,46 +4,62 @@
 #
 # https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
 name: Test with Haxe
-description: Sets up Haxe, the required compiler targets and runs tests
-inputs:
-  haxe-version: { required: true,        description: "Haxe version to test with" }
-  haxe-libs:    { required: false,       description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
-  haxe-args:    { default: "tests.hxml", description: "Haxe compiler arguments" }
-  output-dir:   { default: "target",     description: "output folder for compilation artifacts"}
+on:
+  workflow_call:
+    inputs:
+      runner-os:    { required: true,        type: string, description: "e.g. ubuntu-latest, macos-latest, windows-latest" }
+      haxe-version: { required: true,        type: string, description: "Haxe version to test with" }
+      haxe-libs:    { required: false,       type: string, description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
+      haxe-args:    { default: "tests.hxml", type: string, description: "Haxe compiler arguments" }
+      output-dir:   { default: "target",     type: string, description: "output folder for compilation artifacts"}
 
-  test-cpp:    { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-cs:     { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-eval:   { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-flash:  { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-hl:     { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-java:   { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-jvm:    { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-lua:    { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-neko:   { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-node:   { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-php:    { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
-  test-python: { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-cpp:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-cs:     { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-eval:   { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-flash:  { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-hl:     { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-java:   { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-jvm:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-lua:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-neko:   { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-node:   { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-php:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
+      test-python: { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
 
-  retries: { default: "0", description: "Number of test retries in case of failures" }
+      retries:              { default:  0, type: number, description: "Number of test retries in case of failures" }
+      test-timeout-minutes: { default: 10, type: number, description: "The maximum number of minutes a test can run before it is terminated." }
 
-  debug-with-ssh:                    { default: "never", description: "Start an SSH session for debugging purposes after tests ran: never, always, on_failure, on_failure_or_cancelled" }
-  debug-with-ssh-only-for-actor:     { default: "true",  description: "Limit access to the SSH session to the GitHub user that triggered the job" }
-  debug-with-ssh-only-jobs-matching: { default: ".*",    description: "Only start an SSH session for jobs matching this regex pattern" }
+      job-timeout-minutes:  { default: 60, type: number, description: "The maximum number of minutes the build job shall run." }
 
-  setup-targets: { default: "true", description: "true or false. Controls if any compiler target should be setup at all. Useful if this action is executed multiple times in the same workflow." }
+      before-tests:       { required: false, type: string, description: "a bash script to be executed before the first test" }
+      #before-tests-shell: { default: "bash", type: string, description: "shell to be used to esecute the before-tests script" }
+      after-tests:        { required: false, type: string, description: "a bash script to be executed after the last test" }
+      #after-tests-shell:  { default: "bash", type: string, description: "shell to be used to esecute the after-tests script" }
 
-  # internal:
-  haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
-  haxe-reusable-workflows-version: { default: "v1", description: "Version of the setup-haxe-targets action" }
+      debug-with-ssh:                    { default: "never", type: string,  description: "Start an SSH session for debugging purposes after tests ran: never, always, on_failure, on_failure_or_cancelled" }
+      debug-with-ssh-only-for-actor:     { default: true,    type: boolean, description: "Limit access to the SSH session to the GitHub user that triggered the job" }
+      debug-with-ssh-only-jobs-matching: { default: ".*",    type: string,  description: "Only start an SSH session for jobs matching this regex pattern" }
 
-runs:
-  using: "composite"
-  steps:
+      # only needs to be specified when executed with nektos/act:
+      haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", type: string, description: "Repository containing this workflow" }
+      haxe-reusable-workflows-version: { default: "v1",                               type: string, description: "Version of this workflow" }
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test-with-haxe:
+    runs-on: ${{ inputs.runner-os }}
+    timeout-minutes: ${{ inputs.job-timeout-minutes }}
+    permissions:
+      id-token: write # currently required to determine job_workflow_ref / job_workflow_sha
+
+    steps:
     - name: "Install: yq" # https://github.com/mikefarah/yq
       uses: vegardit/gha-setup-yq@v1
       
     - name: Process input parameter
-      shell: bash
       env:
         TEST_CPP:    ${{ inputs.test-cpp }}
         TEST_CS:     ${{ inputs.test-cs }}
@@ -58,7 +74,6 @@ runs:
         TEST_PHP:    ${{ inputs.test-php }}
         TEST_PYTHON: ${{ inputs.test-python }}
       run: |
-        echo "::group::Process input parameter"
         set -eu
         
         function read_var() {
@@ -93,7 +108,12 @@ runs:
           echo "TEST_${target}_RETRIES=$target_retries"             | tee -a "$GITHUB_ENV"
           echo "TEST_${target}_TIMEOUT=$target_timeout"             | tee -a "$GITHUB_ENV"
         done
-        echo "::endgroup::"
+
+    - name: Show environment variables
+      run: env | sort
+
+    - name: Git Checkout
+      uses: actions/checkout@v3 #https://github.com/actions/checkout
 
     ##################################################
     # Prepare OS
@@ -101,23 +121,19 @@ runs:
     # workaround to determine job_workflow_ref / job_workflow_sha to run the local actions from the same branch as this workflow
     # - https://stackoverflow.com/questions/71046096/reusable-workflows-with-local-actions
     # - https://github.com/community/community/discussions/31054
-    - name: "Git checkout workflow repo"
-      if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
-      uses: actions/checkout@v3
-      with:
-        path: ./.github/temp/haxe-reusable-workflows
-        repository: ${{ inputs.haxe-reusable-workflows-repo }}
-        ref: ${{ inputs.haxe-reusable-workflows-version }}
-        token: ${{ github.token }}
-    - name: "Git checkout workflow repo"
-      if: env.ACT == 'true'
-      shell: bash
+    - name: "Determine reusable workflow repo"
+      id: JOB_WORKFLOW_INFO
       run: |
-        echo "::group::Git checkout workflow repo"
         set -euo pipefail
         if [[ -f ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe-targets/action.yaml ]]; then
           echo "nothing to do"
+        elif [[ "${{ env.ACT }}" != "true" ]]; then
+          id_token_payload=$(jq -R 'split(".") | .[1] | @base64d | fromjson' <<< "$ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+          # TODO id_token_payload=$(yq 'split(".") | .[1] | @base64d | fromjson' <<< "$ACTIONS_ID_TOKEN_REQUEST_TOKEN") # https://github.com/mikefarah/yq/issues/1555
+          echo "repo=$(yq '.oidc_extra | fromjson | .job_workflow_ref | split("/") | .[0:2] | join("/")' <<< "$id_token_payload")" | tee -a "$GITHUB_OUTPUT"
+          echo  "ref=$(yq '.oidc_extra | fromjson | .job_workflow_sha' <<< "$id_token_payload")" | tee -a "$GITHUB_OUTPUT"
         else
+          # nektos/act does not provide $ACTIONS_ID_TOKEN_REQUEST_TOKEN so we need a workaround for the workaround
           rm -rf ./.github/temp/haxe-reusable-workflows
           mkdir -p ./.github/temp
           if [[ -f ./.github/actions/setup-haxe-targets/action.yml ]]; then
@@ -125,12 +141,18 @@ runs:
           else
             # checkout "actions/checkout@v3" fails with "using ::error::Input required and not supplied: token", so we do it old school
             (set -x; git clone "https://github.com/${{ inputs.haxe-reusable-workflows-repo }}" \
-               --depth 1 --single-branch \
+              --depth 1 --single-branch \
                -b "${{ inputs.haxe-reusable-workflows-version }}" \
                ./.github/temp/haxe-reusable-workflows)
           fi
         fi
-        echo "::endgroup::"
+    - name: "Git checkout workflow repo"
+      if: env.ACT != 'true'
+      uses: actions/checkout@v3
+      with:
+        path: ./.github/temp/haxe-reusable-workflows
+        repository: ${{ steps.JOB_WORKFLOW_INFO.outputs.repo }}
+        ref: ${{ steps.JOB_WORKFLOW_INFO.outputs.ref }}
 
     - name: Prepare OS
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/prepare-os
@@ -154,7 +176,6 @@ runs:
       id: HAXE-TARGETS-CACHE
       shell: bash
       run: |
-        echo "::group::Haxe Libs Cache: Init Root Path"
         set -euo pipefail
 
         if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -175,7 +196,6 @@ runs:
         popd
 
         ls -l $path_nix
-        echo "::endgroup::"
 
 
     ##################################################
@@ -187,13 +207,10 @@ runs:
         haxe-version: ${{ inputs.haxe-version }}
 
     - name: "Verify: Haxe"
-      shell: bash
       run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
 
     - name: "Install: Haxe Libraries"
-      shell: bash
       run: |
-        echo "::group::Install: Haxe Libraries"
         set -euo pipefail
 
         case "${{runner.os}}" in
@@ -226,7 +243,7 @@ runs:
           # using curl instead of haxelib to download zips, which is faster and more robust
           local lib_name=$1
           local lib_ver=${2:-}
-
+          
           pushd $HOME
             if [[ -z $lib_ver ]]; then
               echo "Determining latest version of '${lib_name}'..."
@@ -235,7 +252,7 @@ runs:
                 https://lib.haxe.org/api/3.0/index.n?__x=ay3:apiy16:getLatestVersionhay${#lib_name}:${lib_name}h \
               | cut -d: -f2)
             fi
-            
+
             if [[ ! -f $HAXELIB_PATH/$lib_name/${lib_ver//./,}/haxelib.json ]]; then
               (set -x; curl -sSfL --connect-timeout 10 --retry 3 https://lib.haxe.org/p/$lib_name/$lib_ver/download/ -o $lib_name.zip) || exit $?
               (set -x; haxelib --always install $lib_name.zip)
@@ -260,7 +277,6 @@ runs:
         if [[ -f haxelib.json ]]; then
           haxelib dev $(yq .name haxelib.json) .
         fi
-        echo "::endgroup::"
 
 
     ##################################################
@@ -272,41 +288,38 @@ runs:
       if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
       env:
         GH_TOKEN: ${{ github.token }}
-      shell: bash
       run: |
-        echo "::group::Haxe Targets Cache: Prepare Update"
-          set -euo pipefail
-          if [[ "${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-hit }}" == "true" ]]; then
+        set -euo pipefail
+        if [[ "${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-hit }}" == "true" ]]; then
 
-            pushd "${{ steps.haxe-targets.cache.outputs.path_nix }}"
-              # create a quick hashsum based on file names and file size
-              case "${{ runner.os }}" in
-                macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
-                *)     current_hash="$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" ;;
-              esac
-            popd
+          pushd "${{ steps.haxe-targets.cache.outputs.path_nix }}"
+            # create a quick hashsum based on file names and file size
+            case "${{ runner.os }}" in
+              macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
+              *)     current_hash="$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" ;;
+            esac
+          popd
 
-            if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
-              echo "Cache update needed, since folder content changed. new hash: $current_hash"
+          if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
+            echo "Cache update needed, since folder content changed. new hash: $current_hash"
 
-              primaryCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}"
-              matchedCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-matched-key }}"
-              if [[ $primaryCacheKey == "$matchedCacheKey" ]]; then
-                gh extension install actions/gh-actions-cache || true
-                if gh actions-cache delete "$primaryCacheKey" --confirm; then
-                  echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"                  
-                fi
-              else
-                echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+            primaryCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}"
+            matchedCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-matched-key }}"
+            if [[ $primaryCacheKey == "$matchedCacheKey" ]]; then
+              gh extension install actions/gh-actions-cache || true
+              if gh actions-cache delete "$primaryCacheKey" --confirm; then
+                echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"                  
               fi
             else
-              echo "No Cache update needed"
+              echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
             fi
           else
-            echo "Cache update needed, since no cache hit occured"
-            echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+            echo "No Cache update needed"
           fi
-        echo "::endgroup::"
+        else
+          echo "Cache update needed, since no cache hit occured"
+          echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
+        fi
 
     - name: "Haxe Libs Cache: Update"
       uses: actions/cache/save@v3
@@ -322,8 +335,14 @@ runs:
     ##################################################
 
     - name: Create output dir '${{ inputs.output-dir }}'
-      shell: bash
       run: mkdir -p "${{ inputs.output-dir }}"
+
+    - name: "Before Tests: Custom Bash script"
+      if: inputs.before-tests
+      #shell: ${{ inputs.before-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+      run: ${{ inputs.before-tests }}
 
 
     ##################################################
@@ -332,9 +351,8 @@ runs:
     - name: Test [neko]
       if: env.TEST_NEKO == 'true'
       continue-on-error: ${{ env.TEST_NEKO_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_NEKO_TIMEOUT) }}
       run:  |
-        echo "::group::Test [neko]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_NEKO_ARGS -neko ${{ inputs.output-dir }}/tests.n)
@@ -347,7 +365,6 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
@@ -356,12 +373,10 @@ runs:
     - name: Test [eval]
       if: env.TEST_EVAL == 'true'
       continue-on-error: ${{ env.TEST_EVAL_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_EVAL_TIMEOUT) }}
       run: |
-        echo "::group::Test [eval]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
-        [[ $TEST_EVAL != "true" ]] && haxeArgs=$TEST_EVAL || haxeArgs="${{ inputs.haxe-args }}"
 
         max_attempts=$((1 + $TEST_EVAL_RETRIES))
         for i in $(seq 1 $max_attempts); do
@@ -371,22 +386,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test Hashlink
     ##################################################
     - name: Setup [hl]
-      if: inputs.setup-targets == 'true' && env.TEST_HL == 'true'
+      if: env.TEST_HL == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-hashlink
 
     - name: Test [hl]
       if: env.TEST_HL == 'true'
       continue-on-error: ${{ env.TEST_HL_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_HL_TIMEOUT) }}
       run: |
-        echo "::group::Test [hl]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_HL_ARGS -hl ${{ inputs.output-dir }}/tests.hl)
@@ -399,23 +412,21 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test Flash
     ##################################################
     - name: Setup [flash]
-      if: inputs.setup-targets == 'true' && env.TEST_FLASH == 'true'
+      if: env.TEST_FLASH == 'true'
       id: SETUP_FLASH
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-flash
 
     - name: Test [flash]
       if: env.TEST_FLASH == 'true'
       continue-on-error: ${{ env.TEST_FLASH_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_FLASH_TIMEOUT) }}
       run: |
-        echo "::group::Test [flash]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_FLASH_ARGS -swf ${{ inputs.output-dir }}/tests.swf)
@@ -432,22 +443,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 2; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test Java/JVM
     ##################################################
     - name: Setup [java]
-      if: inputs.setup-targets == 'true' && (env.TEST_JAVA == 'true' || env.TEST_JVM == 'true')
+      if: (env.TEST_JAVA == 'true' || env.TEST_JVM == 'true')
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-java
 
     - name: Test [java]
       if: env.TEST_JAVA == 'true'
       continue-on-error: ${{ env.TEST_JAVA_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_JAVA_TIMEOUT) }}
       run: |
-        echo "::group::Test [java]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_JAVA_ARGS -java ${{ inputs.output-dir }})
@@ -460,14 +469,12 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
     - name: Test [jvm]
       if: env.TEST_JVM == 'true'
       continue-on-error: ${{ env.TEST_JVM_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_JVM_TIMEOUT) }}
       run: |
-        echo "::group::Test [jvm]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_JVM_ARGS -D jvm -java ${{ inputs.output-dir }})
@@ -480,22 +487,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test Node.js
     ##################################################
     - name: Setup [node]
-      if: inputs.setup-targets == 'true' && env.TEST_NODE == 'true'
+      if: env.TEST_NODE == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-node
 
     - name: Test [node]
       if: env.TEST_NODE == 'true'
       continue-on-error: ${{ env.TEST_NODE_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_NODE_TIMEOUT) }}
       run: |
-        echo "::group::Test [node]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_NODE_ARGS -lib hxnodejs -D nodejs -js ${{ inputs.output-dir }}/tests.js)
@@ -508,14 +513,13 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test PHP
     ##################################################
     - name: Setup [php]
-      if: inputs.setup-targets == 'true' && env.TEST_PHP == 'true'
+      if: env.TEST_PHP == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-php
       with:
         php-version: ${{ startsWith(inputs.haxe-version, '3.') && '5.6' || '7.4' }}
@@ -523,9 +527,8 @@ runs:
     - name: Test [php]
       if: env.TEST_PHP == 'true'
       continue-on-error: ${{ env.TEST_PHP_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_PHP_TIMEOUT) }}
       run: |
-        echo "::group::Test [php]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_PHP_ARGS -php ${{ inputs.output-dir }}/php)
@@ -538,22 +541,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test Python
     ##################################################
     - name: Setup [python]
-      if: inputs.setup-targets == 'true' && (env.TEST_PYTHON == 'true' || env.TEST_LUA == 'true') # Lua requires Python for installation
+      if: (env.TEST_PYTHON == 'true' || env.TEST_LUA == 'true') # Lua requires Python for installation
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-python
 
     - name: Test [python]
       if: env.TEST_PYTHON == 'true'
       continue-on-error: ${{ env.TEST_PYTHON_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_PYTHON_TIMEOUT) }}
       run: |
-        echo "::group::Test [python]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_PYTHON_ARGS -python ${{ inputs.output-dir }}/tests.py)
@@ -566,22 +567,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test LUA
     ##################################################
     - name: Setup [lua]
-      if: inputs.setup-targets == 'true' && env.TEST_LUA == 'true'
+      if: env.TEST_LUA == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-lua
 
     - name: Test [lua]
       if: env.TEST_LUA == 'true'
       continue-on-error: ${{ env.TEST_LUA_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_LUA_TIMEOUT) }}
       run: |
-        echo "::group::Test [lua]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_LUA_ARGS -lua ${{ inputs.output-dir }}/tests.lua)
@@ -594,22 +593,20 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
     # Test C#
     ##################################################
     - name: Setup [cs]
-      if: inputs.setup-targets == 'true' && env.TEST_CS == 'true'
+      if: env.TEST_CS == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-cs
 
     - name: Test [cs]
       if: env.TEST_CS == 'true'
       continue-on-error: ${{ env.TEST_CS_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_CS_TIMEOUT) }}
       run: |
-        echo "::group::Test [cs]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_CS_ARGS -cs ${{ inputs.output-dir }}/cs)
@@ -622,7 +619,6 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
 
 
     ##################################################
@@ -631,9 +627,8 @@ runs:
     - name: Test [cpp] # testing C++ as last since it takes the longest to build
       if: env.TEST_CPP == 'true'
       continue-on-error: ${{ env.TEST_CPP_ALLOW_FAILURE == 'true' }}
-      shell: bash
+      timeout-minutes: ${{ fromJSON(env.TEST_CPP_TIMEOUT) }}
       run: |
-        echo "::group::Test [cpp]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
         (set -x; haxe $TEST_CPP_ARGS -cpp ${{ inputs.output-dir }}/cpp)
@@ -653,7 +648,18 @@ runs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
-        echo "::endgroup::"
+
+
+    ##################################################
+    # After Tests
+    ##################################################
+    - name: "After Tests: Custom Bash script"
+      if: always() && inputs.after-tests
+      #shell: ${{ inputs.after-tests-shell }}
+      env:
+        GITHUB_JOB_ID: ${{ github.job }}
+        GITHUB_JOB_STATUS: ${{ job.status }}
+      run: ${{ inputs.after-tests }}
 
 
     ##################################################
@@ -662,7 +668,6 @@ runs:
     - name: "SSH session for debugging: check"
       id: DEBUG_SSH_SESSSION_CHECK
       if: always()
-      shell: bash
       run: |
         set -eu
         job_filter_pattern="${{ inputs.debug-with-ssh-only-jobs-matching }}"

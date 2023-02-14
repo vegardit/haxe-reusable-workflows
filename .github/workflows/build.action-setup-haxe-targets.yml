@@ -1,0 +1,74 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
+name: Test "setup-haxe-targets" Action
+
+on:
+  push:
+    branches:
+    - '**'
+    tags-ignore:
+    - '**'
+    paths-ignore:
+    - '**/*.adoc'
+    - '**/*.md'
+    - '.github/*.yml'
+    - '.github/actions/test-with-haxe/*'
+    - '.github/workflows/*test-with-haxe*.yml'
+  pull_request:
+  workflow_dispatch:
+    # https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/
+    inputs:
+      debug-with-ssh:
+        description: "Start an SSH session for debugging purposes after tests ran:"
+        default: never
+        type: choice
+        options: [ always, on_failure, on_failure_or_cancelled, never ]
+      debug-with-ssh-only-for-actor:
+        description: "Limit access to the SSH session to the GitHub user that triggered the job."
+        default: true
+        type: boolean
+      debug-with-ssh-only-jobs-matching:
+        description: "Only start an SSH session for jobs matching this regex pattern:"
+        default: ".*"
+        type: string
+
+jobs:
+  setup-haxe-targets-action-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: 
+        - ubuntu-latest
+        - macos-latest
+        - windows-latest
+
+    steps:
+    - name: Show environment variables
+      run: env | sort
+      
+    - name: TEst
+      shell: bash
+      run: curl -vLI https://lib.haxe.org/p/hxjava/3.2.0/download/
+
+    - name: Git Checkout
+      uses: actions/checkout@v3 #https://github.com/actions/checkout
+
+    - name: "Install: Haxe compiler targets"
+      id: setup-haxe-targets
+      uses: ./.github/actions/setup-haxe-targets
+      with:
+        haxe-reusable-workflows-repo:    ${{ github.repository }}
+        haxe-reusable-workflows-version: ${{ github.ref }}
+
+        setup-cs:     true
+        setup-flash:  true
+        setup-hl:     true
+        setup-java:   17
+        setup-lua:    5.3.5
+        setup-node:   18
+        setup-php:    8.0  # or PHP version, e.g. "7.4"
+        setup-python: '3.10'

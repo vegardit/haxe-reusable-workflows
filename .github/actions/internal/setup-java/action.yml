@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: © Vegard IT GmbH (https://vegardit.com) and contributors
+# SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
+# SPDX-License-Identifier: Apache-2.0
+#
+# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+name: Setup Haxe Java Target
+description: Installs and configures the Haxe compiler target Java
+
+inputs:
+  java-version: 
+    default: "11"
+    description: "Java version"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Setup Java: Install Binaries"
+      uses: actions/setup-java@v3 # https://github.com/marketplace/actions/setup-java-jdk
+      with:
+        distribution: 'temurin'
+        java-version: ${{ inputs.java-version }}
+
+    - name: "Setup Java: Verify PATH"
+      shell: bash
+      run: java -version

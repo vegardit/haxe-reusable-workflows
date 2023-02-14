@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions
-name: Test Composite Action
+name: Test "test-with-haxe" Action
 
 on:
   push:
@@ -15,7 +15,9 @@ on:
     - '**/*.adoc'
     - '**/*.md'
     - '.github/*.yml'
-    - '.github/workflows/*reusable*.yml'
+    - '.github/workflows/test-with-haxe.yml'
+    - '.github/workflows/build.action-setup-haxe-targets.yml'
+    - '.github/workflows/build.workflow-test-with-haxe.yml'
   pull_request:
   workflow_dispatch:
     # https://github.blog/changelog/2020-07-06-github-actions-manual-triggers-with-workflow_dispatch/
@@ -35,7 +37,7 @@ on:
         type: string
 
 jobs:
-  test-composite-action:
+  test-with-haxe-action-test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -67,30 +69,24 @@ jobs:
         test-cpp: true
         test-cs: true
         test-eval: true
-        test-flash: ${{ !startsWith(matrix.os, 'macos') && 'tests-flash.hxml' || false }} # FlashPlayer hangs on MacOS
+        test-flash: |
+          haxe-args: "tests-flash.hxml"
+          enabled: ${{ !startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on MacOS
+          retries: 10
+          timeout-minutes: 1
+          allow-failure: true
         test-hl: ${{ matrix.haxe != '3.4.7' }}
         test-java: true
         test-jvm: true
         test-lua: true
         test-neko: true
-        test-node: true
+        test-node: tests.hxml
         test-php: true
         test-python: true
 
-        before-tests: |
-          echo "Preparing tests..."
-
-        after-tests: |
-          case "$GITHUB_JOB_STATUS" in
-            success)   echo "Job success" ;;
-            failure)   echo "Job failure" ;;
-            cancelled) echo "Job cancelled." ;;
-            *)         echo "ERROR: Unexpected job status $GITHUB_JOB_STATUS"; exit 1 ;;
-          esac
-
         debug-with-ssh: ${{ inputs.debug-with-ssh || 'never' }}
         debug-with-ssh-only-for-actor: ${{ inputs.debug-with-ssh-only-for-actor || false }}
-        debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-for-actor }}
+        debug-with-ssh-only-jobs-matching: ${{ inputs.debug-with-ssh-only-jobs-matching }}
 
     - name: "Test with Haxe (continue-on-error)"
       uses: ./.github/actions/test-with-haxe
@@ -100,19 +96,44 @@ jobs:
         haxe-reusable-workflows-version: ${{ github.ref }}
 
         haxe-version: ${{ matrix.haxe }}
-        haxe-args: -cp src -main MainWithError
-        continue-on-error: cpp cs eval flash hl java jvm lua neko node php python
+        haxe-args: -cp test -main MainWithError
         retries: 1
-        setup-targets: false
-        test-cpp: true
-        test-cs: true
-        test-eval: true
-        test-flash: ${{ !startsWith(matrix.os, 'macos') && 'tests-flash.hxml' || false }} # FlashPlayer hangs on MacOS
-        test-hl: ${{ matrix.haxe != '3.4.7' }}
-        test-java: true
-        test-jvm: true
-        test-lua: true
-        test-neko: true
-        test-node: true
-        test-php: true
-        test-python: true
+
+        test-cpp: |
+          allow-failure: true
+          enabled: true
+        test-cs: |
+          allow-failure: true
+          enabled: true
+        test-eval: |
+          allow-failure: true
+          enabled: true
+        test-flash: |
+          haxe-args: "tests-flash.hxml"
+          enabled: ${{ !startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on MacOS
+          timeout-minutes: 1
+          allow-failure: true
+        test-hl: |
+          allow-failure: true
+          enabled: true
+        test-java: |
+          allow-failure: true
+          enabled: true
+        test-jvm: |
+          allow-failure: true
+          enabled: true
+        test-lua: |
+          allow-failure: true
+          enabled: true
+        test-neko: |
+          allow-failure: true
+          enabled: true
+        test-node: |
+          allow-failure: true
+          enabled: true
+        test-php: |
+          allow-failure: true
+          enabled: true
+        test-python: |
+          allow-failure: true
+          enabled: true
