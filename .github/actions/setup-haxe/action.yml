@@ -69,7 +69,7 @@ runs:
         HAXE_VERSION: ${{ inputs.haxe-version }}
       run: |
         echo "::group::Setup Haxe: Install Binaries"
-        set -euox pipefail
+        set -euo pipefail
 
         if [[ -n "${{ github.token }}" ]]; then
           auth_header='-H "Authorization: token ${{ github.token }}"'

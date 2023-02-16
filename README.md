@@ -47,7 +47,7 @@ jobs:
       runner-os: ubuntu-latest
       haxe-version: 4.2.5
       haxe-args: myconfig.hxml # default is "tests.hxml"
-      haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
+      haxe-libs: hx3compat hscript # haxe libraries to be installed
 
       # Haxe targets to test with:
       test-cpp:    true
@@ -99,7 +99,11 @@ jobs:
       runner-os: ${{ matrix.os }}
       haxe-version: ${{ matrix.haxe }}
       haxe-args: myconfig.hxml # default is "tests.hxml"
-      haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
+      haxe-libs: | # haxe libraries to be installed:
+        hscript               # install latest version from lib.haxe.org
+        haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
+        haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
+        haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
       # Haxe targets to test with, by default all are set to false:
       test-cpp:    true
@@ -167,7 +171,7 @@ jobs:
       with:
         haxe-version: 4.2.5
         haxe-args: myconfig.hxml # default is "tests.hxml"
-        haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
+        haxe-libs: hx3compat hscript # libraries to be installed
 
         # Haxe targets to test with:
       test-cpp:    true
@@ -227,7 +231,12 @@ jobs:
       with:
         haxe-version: ${{ matrix.haxe }}
         haxe-args: myconfig.hxml # default is "tests.hxml"
-        haxe-libs: hx3compat hscript # libraries to be installed via "haxelib install"
+        haxe-libs: | # haxe libraries to be installed:
+          hscript               # install latest version from lib.haxe.org
+          haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
+          haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
+          haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+
 
         # Haxe targets to test with, by default all are set to false:
         test-cpp:    true

@@ -7,7 +7,7 @@ name: Test with Haxe
 description: Sets up Haxe, the required compiler targets and runs tests
 inputs:
   haxe-version: { default: "latest",     description: "Haxe to test with (nightly, latest or a version number)" }
-  haxe-libs:    { required: false,       description: "Haxe libs to install via haxelib command separated by space, e.g. 'hscript format@1.0.0'" }
+  haxe-libs:    { required: false,       description: "Haxe libs to install, separated by space or new-line, e.g. 'hscript format@1.0.0'" }
   haxe-args:    { default: "tests.hxml", description: "Haxe compiler arguments" }
   output-dir:   { default: "target",     description: "output folder for compilation artifacts"}
 
@@ -137,48 +137,6 @@ runs:
 
 
     ##################################################
-    # Haxe Libs Cache Restore
-    # See https://github.com/actions/cache/issues/342
-    ##################################################
-    - name: "Haxe Libs Cache: Restore"
-      id: HAXE-LIBS-CACHE-RESTORE
-      if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
-      uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
-      with:
-        path: |
-          ${{ runner.tool_cache }}/haxe/lib
-        # repo layout between haxe3 and 4 changed (and may change again) so we cache based on haxe version
-        key: ${{ runner.os }}-haxelibs-${{ inputs.haxe-version }}
-
-    - name: "Haxe Libs Cache: Init Root Path"
-      id: HAXE-TARGETS-CACHE
-      shell: bash
-      run: |
-        echo "::group::Haxe Libs Cache: Init Root Path"
-        set -euo pipefail
-
-        if [[ "${{ runner.os }}" == "Windows" ]]; then
-          path_nix="$(cygpath '${{ runner.tool_cache }}')/haxe/lib"
-          echo 'path_win=${{ runner.tool_cache }}\haxe\lib' | tee -a "$GITHUB_OUTPUT"
-        else
-          path_nix="${{ runner.tool_cache }}/haxe/lib"
-        fi
-        mkdir -p "$path_nix"
-        echo "path_nix=$path_nix" | tee -a "$GITHUB_OUTPUT"
-
-        pushd "$path_nix"
-          # create a quick hashsum based on file names and file size
-          case "${{ runner.os }}" in
-            macOS) echo "initial_hash=$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
-            *)     echo "initial_hash=$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" | tee -a "$GITHUB_OUTPUT" ;;
-          esac
-        popd
-
-        ls -l $path_nix
-        echo "::endgroup::"
-
-
-    ##################################################
     # Install software
     ##################################################
     - name: "Install: Haxe ${{ matrix.haxe }}"
@@ -188,142 +146,11 @@ runs:
         haxe-reusable-workflows-repo: ${{ inputs.haxe-reusable-workflows-repo }}
         haxe-reusable-workflows-version: ${{ inputs.haxe-reusable-workflows-version }}
 
-    - name: "Install: Haxe Libraries"
-      shell: bash
-      run: |
-        echo "::group::Install: Haxe Libraries"
-        set -euo pipefail
-
-        case "${{runner.os}}" in
-          Windows)
-            export HAXELIB_PATH="${{ runner.tool_cache }}\\haxe\\lib"
-            mkdir -p "$(cygpath "$HAXELIB_PATH")"
-            ;;
-          *)
-            export HAXELIB_PATH="${{ runner.tool_cache }}/haxe/lib"
-            mkdir -p "$HAXELIB_PATH"
-            ;;
-        esac
-        echo "HAXELIB_PATH=$HAXELIB_PATH" | tee -a "$GITHUB_ENV"
-
-        haxelib config
-
-        haxelibs="${{ inputs.haxe-libs }}"
-        if [[ $TEST_CPP  == "true" ]]; then
-          if [[ "${{ inputs.haxe-version }}" == "nightly" ]]; then
-            echo "::group::install_hxcpp"
-            (set -x; haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp.git)
-            pushd "$HAXELIB_PATH/hxcpp/git/tools/hxcpp"
-              haxe compile.hxml
-            popd
-            echo "::endgroup::"
-          else
-            haxelibs+=" hxcpp"
-          fi
-        fi
-        if [[ $TEST_CS   == "true" ]]; then haxelibs+=" hxcs"; fi
-        if [[ $TEST_JAVA == "true" || $TEST_JVM == "true" ]]; then 
-          if [[ "${{ inputs.haxe-version }}" == 3.* ]]; then
-            haxelibs+=" hxjava@3.2.0"
-          else
-            haxelibs+=" hxjava"
-          fi
-        fi
-        if [[ $TEST_NODE == "true" ]]; then haxelibs+=" hxnodejs"; fi
-
-        function haxelib_install() {
-          # using curl instead of haxelib to download zips, which is faster and more robust
-          local lib_name=$1
-          local lib_ver=${2:-}
-
-          pushd $HOME
-            if [[ -z $lib_ver ]]; then
-              echo "Determining latest version of '${lib_name}'..."
-              local lib_ver=$(curl -sSfL --max-time 5 --retry 3 \
-                -H "X-Haxe-Remoting: 1" \
-                https://lib.haxe.org/api/3.0/index.n?__x=ay3:apiy16:getLatestVersionhay${#lib_name}:${lib_name}h \
-              | cut -d: -f2)
-            fi
-            
-            if [[ ! -f $HAXELIB_PATH/$lib_name/${lib_ver//./,}/haxelib.json ]]; then
-              (set -x; curl -sSfL --connect-timeout 10 --retry 3 https://lib.haxe.org/p/$lib_name/$lib_ver/download/ -o $lib_name.zip) || exit $?
-              (set -x; haxelib --always install $lib_name.zip)
-              rm $lib_name.zip
-            else
-              echo "Library $lib_name $lib_ver is already present."
-              (set -x; haxelib --always set $lib_name $lib_ver)
-            fi
-          popd
-        }
-
-        if [[ -n "$haxelibs" ]]; then
-          for lib in $haxelibs; do
-            echo "::group::install_$lib"
-            lib_name="${lib%%@*}"
-            lib_ver="$(echo $lib | cut -s -d@ -f2)"
-            haxelib_install $lib_name $lib_ver
-            echo "::endgroup::"
-          done
-        fi
-
-        if [[ -f haxelib.json ]]; then
-          haxelib dev $(yq .name haxelib.json) .
-        fi
-        echo "::endgroup::"
-
-
-    ##################################################
-    # Haxe Libs Cache Update
-    # See https://github.com/actions/cache/issues/342
-    ##################################################
-    - name: "Haxe Libs Cache: Prepare Update"
-      id: HAXE-LIBS-CACHE-UPDATE-PREPARE
-      if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
-      env:
-        GH_TOKEN: ${{ github.token }}
-      shell: bash
-      run: |
-        echo "::group::Haxe Targets Cache: Prepare Update"
-          set -euo pipefail
-          if [[ "${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-hit }}" == "true" ]]; then
-
-            pushd "${{ steps.haxe-targets.cache.outputs.path_nix }}"
-              # create a quick hashsum based on file names and file size
-              case "${{ runner.os }}" in
-                macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
-                *)     current_hash="$(find . -type f -printf "%p %s\n" | sort -z | sha1sum | cut -d' ' -f1)" ;;
-              esac
-            popd
-
-            if [[ "$current_hash" != "${{ steps.haxe-targets.cache.outputs.initial_hash }}" ]]; then
-              echo "Cache update needed, since folder content changed. new hash: $current_hash"
-
-              primaryCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}"
-              matchedCacheKey="${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-matched-key }}"
-              if [[ $primaryCacheKey == "$matchedCacheKey" ]]; then
-                gh extension install actions/gh-actions-cache || true
-                if gh actions-cache delete "$primaryCacheKey" --confirm; then
-                  echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"                  
-                fi
-              else
-                echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
-              fi
-            else
-              echo "No Cache update needed"
-            fi
-          else
-            echo "Cache update needed, since no cache hit occured"
-            echo "need_cache_update=true" | tee -a "$GITHUB_OUTPUT"
-          fi
-        echo "::endgroup::"
-
-    - name: "Haxe Libs Cache: Update"
-      uses: actions/cache/save@v3
-      if: steps.HAXE-LIBS-CACHE-UPDATE-PREPARE.outputs.need_cache_update == 'true'
+    - name: "Install: Haxelibs"
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/install-haxelibs
       with:
-        path: |
-          ${{ runner.tool_cache }}/haxe/lib
-        key: ${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}
+        haxe-version: ${{ inputs.haxe-version }}
+        haxe-libs:    ${{ inputs.haxe-libs }}
 
 
     ##################################################
