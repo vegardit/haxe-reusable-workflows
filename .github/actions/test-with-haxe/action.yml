@@ -41,7 +41,7 @@ runs:
   steps:
     - name: "Install: yq" # https://github.com/mikefarah/yq
       uses: vegardit/gha-setup-yq@v1
-      
+
     - name: Process input parameter
       shell: bash
       env:
@@ -139,7 +139,7 @@ runs:
     ##################################################
     # Install software
     ##################################################
-    - name: "Install: Haxe ${{ matrix.haxe }}"
+    - name: "Install: Haxe ${{ inputs.haxe-version }}"
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe
       with:
         haxe-version: ${{ inputs.haxe-version }}
@@ -504,7 +504,7 @@ runs:
         job_filter_pattern="${{ inputs.debug-with-ssh-only-jobs-matching }}"
         echo "job_filter: $job_filter_pattern"
 
-        job_info=$(echo "$GITHUB_JOB ${{ toJSON(matrix) }}" | tr -d '\n')
+        job_info=$(echo "$GITHUB_JOB ${{ runner.os }} haxe-${{ inputs.haxe-version }}" | tr -d '\n')
         echo "job_info: $job_info"
 
         if [[ "$job_info" =~ .*$job_filter_pattern.* ]] && case "${{ job.status }}" in
