@@ -106,6 +106,10 @@ runs:
             # install from git
             if [[ $lib_ver == *://* ]]; then
               IFS='#' read -r -a lib_ver_splitted <<< "$lib_ver"
+
+              # in case it was already loaded from cache, delete it to prevent git errors like "You have divergent branches and need to specify how to reconcile them."
+              rm -rf "$HAXELIB_PATH/$lib_name/git"
+
               (set -x; haxelib git --always "$lib_name" "${lib_ver_splitted[0]}" ${lib_ver_splitted[1]:-}) || exit $?
               continue;
             fi
