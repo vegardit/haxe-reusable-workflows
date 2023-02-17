@@ -59,3 +59,14 @@ runs:
         if ! pgrep fontd; then
           sudo launchctl load -w /System/Library/LaunchAgents/com.apple.fontd.useragent.plist
         fi
+
+    - name: "Configure github-actions bot as git user"
+      shell: bash
+      run: |
+        set -x
+
+        # https://github.community/t/github-actions-bot-email-address/17204
+        if ! git config --global user.name; then
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        fi
