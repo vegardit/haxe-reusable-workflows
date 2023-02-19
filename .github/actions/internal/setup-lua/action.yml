@@ -62,12 +62,16 @@ runs:
               fi
             echo "::endgroup::"
 
-            echo "::group::Setup Lua: Install Lua"
-              cache_folder=$(cygpath "$CACHE_FOLDER")
-              mkdir -p "$cache_folder"
-              if [[ ! -d $LUA_HOME/bin ]]; then
-                mkdir -p "$cache_folder/luarocks_downloads"
-                hererocks "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION -rlatest --target=mingw --downloads "$CACHE_FOLDER\\luarocks_downloads"
+            echo "::group::Setup Lua: Install Lua and LuaRocks"
+              luarocks_cmd="luarocks.bat"
+              CACHE_FOLDER=$(cygpath "$CACHE_FOLDER")
+              mkdir -p "$CACHE_FOLDER"
+              if [[ -f $LUA_HOME/bin/$luarocks_cmd ]]; then
+                echo "Nothing to do. LuaRocks already installed."
+              else
+                rm -rf $LUA_HOME
+                mkdir -p "$CACHE_FOLDER/luarocks_downloads"
+                hererocks "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION -rlatest --target=mingw --downloads "$(cygpath "$CACHE_FOLDER/luarocks_downloads")"
               fi
               echo "$(cygpath -w "$LUA_HOME/bin")" >> "$GITHUB_PATH"
               export PATH="$LUA_HOME/bin:$PATH"
@@ -140,9 +144,14 @@ runs:
               fi
             echo "::endgroup::"
  
-            echo "::group::Setup Lua: Install Lua"
+            echo "::group::Setup Lua: Install Lua and Luarocks"
+              luarocks_cmd="luarocks"
               mkdir -p $CACHE_FOLDER
-              if [[ ! -d $LUA_HOME/bin ]]; then
+              if [[ -f $LUA_HOME/bin/$luarocks_cmd ]]; then
+                echo "Nothing to do. LuaRocks already installed."
+              else
+                rm -rf $LUA_HOME
+                mkdir -p "$CACHE_FOLDER/luarocks_downloads"
                 hererocks $LUA_HOME --lua $LUA_VERSION -rlatest --downloads "$CACHE_FOLDER/luarocks_downloads"
               fi
               echo "$LUA_HOME/bin" >> $GITHUB_PATH
@@ -155,21 +164,30 @@ runs:
             ;;
         esac
 
+        echo "::group::Setup Lua: List installed Lua modules"
+          $luarocks_cmd list --porcelain
+        echo "::endgroup::"
+
         lualibs+=" lrexlib-pcre@2.9.1-1"
         lualibs+=" luasocket@3.1.0-1"
         lualibs+=" luautf8@0.1.5-2"
         lualibs+=" luv@1.44.2-1"
 
         for lib in $lualibs; do
-          echo "::group::Setup Lua: Install lualib $lib"
+          echo "::group::Setup Lua: Install Lua module [$lib]"
             lib_name="${lib%%@*}"
             lib_ver="${lib#*@}"
-            case "${{ runner.os }}" in
-              Windows) luarocks.bat install $lib_name $lib_ver ${lualib_install_opts:-} ;;
-              *)       luarocks     install $lib_name $lib_ver ${lualib_install_opts:-} ;;
-            esac
+            if $luarocks_cmd list --porcelain | grep -E "^$lib_name\s$lib_ver\s"; then
+               echo "Nothing to do. Lua module [$lib] is already installed."
+            else 
+               $luarocks_cmd install $lib_name $lib_ver ${lualib_install_opts:-}
+            fi
           echo "::endgroup::"
         done
+
+        echo "::group::Setup Lua: List installed Lua modules"
+          $luarocks_cmd list --porcelain
+        echo "::endgroup::"
 
     - name: "Setup Lua: Verify PATH"
       if: ${{ env.SETUP_LUA != 'false' }}
