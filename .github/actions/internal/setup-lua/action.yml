@@ -106,6 +106,7 @@ runs:
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Patch luarocks/luasec"
+              # https://github.com/brunoos/luasec/issues/150
               curl -sSfL https://raw.githubusercontent.com/brunoos/luasec/master/luasec-1.2.0-1.rockspec | sed 's/32MD//g' > $HOME/luasec-1.2.0-1.rockspec
               lualibs+=" $(cygpath -wa "$HOME/luasec-1.2.0-1.rockspec")"
             echo "::endgroup::"
@@ -148,7 +149,7 @@ runs:
               export PATH="$LUA_HOME/bin:$PATH"
             echo "::endgroup::"
 
-            lualibs+=" luasec@1.0.2-1"
+            lualibs+=" luasec@1.2.0-1"
             lualibs+=" hx-lua-simdjson@0.0.1-1"
             lualibs+=" environ@0.1.0-1" # for Haxe 3
             ;;
@@ -156,7 +157,7 @@ runs:
 
         lualibs+=" lrexlib-pcre@2.9.1-1"
         lualibs+=" luasocket@3.1.0-1"
-        lualibs+=" luautf8@0.1.1-1"
+        lualibs+=" luautf8@0.1.5-2"
         lualibs+=" luv@1.44.2-1"
 
         for lib in $lualibs; do
