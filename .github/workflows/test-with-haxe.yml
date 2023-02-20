@@ -75,33 +75,40 @@ jobs:
         TEST_PYTHON: ${{ inputs.test-python }}
       run: |
         set -eu
-        
+
         function read_var() {
           echo "${!1}"
         }
-        
+
         for target in CPP CS EVAL FLASH HL JAVA JVM LUA NEKO NODE PHP PYTHON; do
           target_args="${{ inputs.haxe-args }}"
           target_allow_failure="false"
           target_retries="${{ inputs.retries }}"
           target_timeout="${{ inputs.test-timeout-minutes }}"
-          
+
           target_config=$(read_var "TEST_$target")
           case "$target_config" in
             ^$) test_target="false" ;;
             false|true) test_target=$target_config ;;
             *:*) # fancy YAML parsing
-               test_target=$(         yq '.enabled         // "true}"' <<< "$target_config")
+               test_target=$(         yq '.enabled         // "true"' <<< "$target_config")
                target_allow_failure=$(yq '.allow-failure   // "false"' <<< "$target_config")
                target_args=$(         yq ".haxe-args       // \"$target_args\"   " <<< "$target_config")
                target_retries=$(      yq ".retries         // \"$target_retries\"" <<< "$target_config")
                target_timeout=$(      yq ".timeout-minutes // \"$target_timeout\"" <<< "$target_config")
+
+               case "$target" in
+                 LUA)      echo "TEST_${target}_VERSION=$(yq '.lua-version    // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
+                 NODE)     echo "TEST_${target}_VERSION=$(yq '.node-version   // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
+                 JAVA|JVM) echo "TEST_${target}_VERSION=$(yq '.java-version   // ""'    <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
+                 PYTHON)   echo "TEST_${target}_VERSION=$(yq '.python-version // "" ' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;; 
+               esac
                ;;
             *) test_target="true"
                target_args=$target_config
                ;;
           esac
-          
+
           echo "TEST_${target}=$test_target"                        | tee -a "$GITHUB_ENV"
           echo "TEST_${target}_ARGS=$target_args"                   | tee -a "$GITHUB_ENV"
           echo "TEST_${target}_ALLOW_FAILURE=$target_allow_failure" | tee -a "$GITHUB_ENV"
@@ -114,6 +121,7 @@ jobs:
 
     - name: Git Checkout
       uses: actions/checkout@v3 #https://github.com/actions/checkout
+
 
     ##################################################
     # Prepare OS
@@ -294,8 +302,10 @@ jobs:
     # Test Java/JVM
     ##################################################
     - name: Setup [java]
-      if: (env.TEST_JAVA == 'true' || env.TEST_JVM == 'true')
+      if: env.TEST_JAVA == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-java
+      with:
+        java-version: "${{ env.TEST_JAVA_VERSION || '11' }}"
 
     - name: Test [java]
       if: env.TEST_JAVA == 'true'
@@ -314,6 +324,12 @@ jobs:
           elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
           else sleep 5; fi
         done
+
+    - name: Setup [java]
+      if: env.TEST_JVM == 'true' && env.TEST_JVM_VERSION != env.TEST_JAVA_VERSION
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-java
+      with:
+        java-version: "${{ env.TEST_JVM_VERSION || '11' }}"
 
     - name: Test [jvm]
       if: env.TEST_JVM == 'true'
@@ -340,6 +356,8 @@ jobs:
     - name: Setup [node]
       if: env.TEST_NODE == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-node
+      with:
+        node-version: "${{ env.TEST_NODE_VERSION || 'lts/*' }}"
 
     - name: Test [node]
       if: env.TEST_NODE == 'true'
@@ -394,6 +412,8 @@ jobs:
     - name: Setup [python]
       if: (env.TEST_PYTHON == 'true' || env.TEST_LUA == 'true') # Lua requires Python for installation
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-python
+      with:
+        python-version: "${{ env.TEST_PYTHON_VERSION || '3.11' }}"
 
     - name: Test [python]
       if: env.TEST_PYTHON == 'true'
@@ -420,6 +440,8 @@ jobs:
     - name: Setup [lua]
       if: env.TEST_LUA == 'true'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-lua
+      with:
+        lua-version: "${{ env.TEST_LUA_VERSION || '5.3.6' }}"
 
     - name: Test [lua]
       if: env.TEST_LUA == 'true'

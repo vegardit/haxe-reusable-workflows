@@ -52,10 +52,30 @@ jobs:
       # Haxe targets to test with:
       test-cpp:    true
       test-cs:     true
+      test-eval:   true
+      test-hl:     true
+      test-java:   true
       test-jvm:    true
+      test-lua:    true
+      test-neko:   true
       test-node:   true
+      test-php:    true
       test-python: true
 ```
+
+The `test-<target>:` parameters accepts one of the following values:
+- a boolean value (`true` or `false`) to enable/disable the target tests, or
+- a string with Haxe compiler arguments, e.g. `my-custom.hxml -D foo=1`, or
+- a multi-line YAML string for detailed configuration
+  ```yaml
+  test-cpp: |
+    enabled:         true           # enable/disable tests of this target, default is ´false´
+    haxe-args:       tests-cpp.hxml # custom Haxe compiler arguments for this target, default is the value specified for `haxe-args` or `tests.hxml`
+    allow-failure:   true           # if tests of this targets fail don't fail the whole build, default is ´false´
+    retries:         3              # number of test retries, default is `0`
+    timeout-minutes: 5              # the maximum number of time the target tests can lasts otherwise the tests fail
+  ```
+
 
 Complex config:
 ```yaml
@@ -106,23 +126,27 @@ jobs:
         haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
       # Haxe targets to test with, by default all are set to false:
-      test-cpp:    true
-      test-cs:     true
-      test-eval:   true
+      test-cpp:  true
+      test-cs:   true
+      test-eval: true
       test-flash: |
         enabled:         ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
         haxe-args:       tests-flash.hxml
         allow-failure:   true
         retries:         4
         timeout-minutes: 5
-      test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
-      test-java:   true
-      test-jvm:    true
-      test-lua:    true
-      test-neko:   true
-      test-node:   tests-node.hxml # run tests with a target specific hxml file
-      test-php:    true
-      test-python: true
+      test-hl: ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
+      test-java: |
+        java-version: 11
+      test-jvm: |
+        java-version: 17
+      test-lua: |
+        lua-version: 5.1
+      test-neko: true
+      test-node: tests-node.hxml # run tests with a target specific hxml file
+      test-php:  true
+      test-python: |
+        python-version: 3.9
 
       retries: 2 # number of additional retries in case a test run fails, default is 0
 
@@ -174,14 +198,32 @@ jobs:
         haxe-libs: hx3compat hscript # libraries to be installed
 
         # Haxe targets to test with:
-      test-cpp:    true
-      test-cs:     true
-      test-jvm:    true
-      test-node:   true
-      test-python: true
-
+        test-cpp:    true
+        test-cs:     true
+        test-eval:   true
+        test-hl:     true
+        test-java:   true
+        test-jvm:    true
+        test-lua:    true
+        test-neko:   true
+        test-node:   true
+        test-php:    true
+        test-python: true
     # other steps ...
 ```
+
+The `test-<target>:` parameters accepts one of the following values:
+- a boolean value (`true` or `false`) to enable/disable the target tests, or
+- a string with Haxe compiler arguments, e.g. `my-custom.hxml -D foo=1`, or
+- a multi-line YAML string for detailed configuration
+  ```yaml
+  test-cpp: |
+    enabled:         true           # enable/disable tests of this target, default is ´false´
+    haxe-args:       tests-cpp.hxml # custom Haxe compiler arguments for this target, default is the value specified for `haxe-args` or `tests.hxml`
+    allow-failure:   true           # if tests of this targets fail don't fail the whole build, default is ´false´
+    retries:         3              # number of test retries, default is `0`
+    timeout-minutes: 5              # the maximum number of time the target tests can lasts otherwise the tests fail
+  ```
 
 Complex config:
 ```yaml
@@ -239,22 +281,26 @@ jobs:
 
 
         # Haxe targets to test with, by default all are set to false:
-        test-cpp:    true
-        test-cs:     true
-        test-eval:   true
+        test-cpp:  true
+        test-cs:   true
+        test-eval: true
         test-flash: |
           enabled:       ${{ ! startsWith(matrix.os, 'macos') }} # FlashPlayer hangs on macOS
           allow-failure: true
           haxe-args:     tests-flash.hxml
           retries:       10
-        test-hl:     ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
-        test-java:   true
-        test-jvm:    true
-        test-lua:    true
-        test-neko:   true
-        test-node:   tests-node.hxml # run tests with a target specific hxml file
-        test-php:    true
-        test-python: true
+        test-hl: ${{ matrix.haxe != '3.4.7' }} # HashLink not compatible with Haxe 3.x
+        test-java: |
+          java-version: 11
+        test-jvm: |
+          java-version: 17
+        test-lua: |
+          lua-version: 5.1
+        test-neko: true
+        test-node: tests-node.hxml # run tests with a target specific hxml file
+        test-php:  true
+        test-python: |
+          python-version: 3.9
 
         retries: 2 # number of additional retries in case a test run fails, default is 0
 

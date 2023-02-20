@@ -71,9 +71,11 @@ jobs:
         timeout-minutes: 1
         allow-failure: true
       test-hl: ${{ matrix.haxe != '3.4.7' }}
-      test-java: true
+      test-java: |
+        java-version: 17
       test-jvm: true
-      test-lua: true
+      test-lua: |
+        lua-version: 5.2.4
       test-neko: true
       test-node: tests.hxml
       test-php: true
