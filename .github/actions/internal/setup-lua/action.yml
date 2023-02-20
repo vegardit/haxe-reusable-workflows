@@ -38,7 +38,7 @@ runs:
         GIT_CONFIG_VALUE_0: "false"
       shell: bash
       run: |
-        set -euxo pipefail
+        set -euo pipefail
 
         LUA_HOME=$HOME/lua
         lualibs=
