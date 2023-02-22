@@ -91,8 +91,8 @@ jobs:
             ^$) test_target="false" ;;
             false|true) test_target=$target_config ;;
             *:*) # fancy YAML parsing
-               test_target=$(         yq '.enabled         // "true"' <<< "$target_config")
-               target_allow_failure=$(yq '.allow-failure   // "false"' <<< "$target_config")
+               test_target=$(         yq '.enabled       != false' <<< "$target_config")
+               target_allow_failure=$(yq '.allow-failure == true'  <<< "$target_config")
                target_args=$(         yq ".haxe-args       // \"$target_args\"   " <<< "$target_config")
                target_retries=$(      yq ".retries         // \"$target_retries\"" <<< "$target_config")
                target_timeout=$(      yq ".timeout-minutes // \"$target_timeout\"" <<< "$target_config")
@@ -100,8 +100,8 @@ jobs:
                case "$target" in
                  LUA)      echo "TEST_${target}_VERSION=$(yq '.lua-version    // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
                  NODE)     echo "TEST_${target}_VERSION=$(yq '.node-version   // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
-                 JAVA|JVM) echo "TEST_${target}_VERSION=$(yq '.java-version   // ""'    <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
-                 PYTHON)   echo "TEST_${target}_VERSION=$(yq '.python-version // "" ' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;; 
+                 JAVA|JVM) echo "TEST_${target}_VERSION=$(yq '.java-version   // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;;
+                 PYTHON)   echo "TEST_${target}_VERSION=$(yq '.python-version // ""' <<< "$target_config")" | tee -a "$GITHUB_ENV" ;; 
                esac
                ;;
             *) test_target="true"
