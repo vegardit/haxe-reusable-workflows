@@ -168,6 +168,9 @@ runs:
           $luarocks_cmd list --porcelain
         echo "::endgroup::"
 
+        if [[ $LUA_VERSION == 5.1* ]]; then
+          lualibs+=" bit32@5.2.2-1"
+        fi
         lualibs+=" lrexlib-pcre@2.9.1-1"
         lualibs+=" luasocket@3.1.0-1"
         lualibs+=" luautf8@0.1.5-2"
