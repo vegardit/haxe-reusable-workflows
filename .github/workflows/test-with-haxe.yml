@@ -167,20 +167,15 @@ jobs:
 
 
     ##################################################
-    # Install software
+    # Install Haxe and Libraries
     ##################################################
     - name: "Install: Haxe ${{ inputs.haxe-version }}"
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/setup-haxe
       with:
         haxe-version: ${{ inputs.haxe-version }}
+        haxe-libs:    ${{ inputs.haxe-libs }}
         haxe-reusable-workflows-repo: ${{ inputs.haxe-reusable-workflows-repo }}
         haxe-reusable-workflows-version: ${{ inputs.haxe-reusable-workflows-version }}
-
-    - name: "Install: Haxelibs"
-      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/install-haxelibs
-      with:
-        haxe-version: ${{ inputs.haxe-version }}
-        haxe-libs:    ${{ inputs.haxe-libs }}
 
 
     ##################################################

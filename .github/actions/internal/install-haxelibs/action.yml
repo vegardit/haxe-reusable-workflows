@@ -77,23 +77,23 @@ runs:
         haxelib config
 
         haxelibs='${{ inputs.haxe-libs }}'
-        if [[ $TEST_CPP  == "true" ]]; then
+        if [[ ${TEST_CPP:-} == "true" ]]; then
           if [[ '${{ inputs.haxe-version }}' == "nightly" ]]; then
             echo "::group::install_hxcpp"
             (set -x; haxelib git --always hxcpp https://github.com/HaxeFoundation/hxcpp.git)
             pushd "$HAXELIB_PATH/hxcpp/git/tools/hxcpp"
-              haxe compile.hxml
+              echo y | haxe compile.hxml
             popd
             echo "::endgroup::"
           else
             haxelibs="hxcpp $haxelibs"
           fi
         fi
-        if [[ $TEST_CS   == "true" ]]; then haxelibs="hxcs $haxelibs"; fi
-        if [[ $TEST_JAVA == "true" || $TEST_JVM == "true" ]]; then
+        if [[ ${TEST_CS:-}   == "true" ]]; then haxelibs="hxcs $haxelibs"; fi
+        if [[ ${TEST_JAVA:-} == "true" || ${TEST_JVM:-} == "true" ]]; then
           haxelibs="hxjava$([[ '${{ inputs.haxe-version }}' == 3.* ]] && echo '@3.2.0' || : ) $haxelibs"
         fi
-        if [[ $TEST_NODE == "true" ]]; then haxelibs="hxnodejs $haxelibs"; fi
+        if [[ ${TEST_NODE:-} == "true" ]]; then haxelibs="hxnodejs $haxelibs"; fi
 
         if [[ -n $haxelibs ]]; then
           # https://stackoverflow.com/a/1521470/5116073

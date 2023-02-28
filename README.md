@@ -12,6 +12,7 @@
 1. [Usage](#usage)
   1. [Build/test using the `test-with-haxe` workflow](#test-with-haxe-workflow)
   1. [Build/test using the `test-with-haxe` action](#test-with-haxe-action)
+  1. [Install Haxe and Haxe Libraries using the `setup-haxe` action](#setup-haxe-action)
   1. [Install Haxe compiler targets using the `setup-haxe-targets` action](#setup-haxe-targets-action)
   1. [Testing locally with `act`](#testing-locally)
 1. [License](#license)
@@ -31,6 +32,8 @@ For faster re-runs caching of haxe libraries and other components is configured.
 ## Usage <a name="usage"></a>Usage
 
 ### <a name="test-with-haxe-workflow"></a>Build/test using the `test-with-haxe` reusable workflow
+
+The `test-with-haxe-workflow` installs Haxe, Haxe libraries, compiler targets and runs the tests against the selected targets.
 
 Simple config:
 ```yaml
@@ -175,6 +178,8 @@ jobs:
 
 ### <a name="test-with-haxe-action"></a>Build/test using the `test-with-haxe` action
 
+The `test-with-haxe-action` installs Haxe, Haxe libraries, compiler targets and runs the tests against the selected targets.
+
 Simple config:
 ```yaml
 name: My Haxe Build
@@ -312,8 +317,57 @@ jobs:
     # other steps ...
 ```
 
+### <a name="setup-haxe-action"></a>Install Haxe compiler and Haxe libraries using the `setup-haxe` action
+
+The `setup-haxe-action` can be used to "only" install the Haxe compiler and Haxe libraries.
+Since Neko is required by haxelib it will be installed too.
+
+
+```yaml
+name: My Haxe Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  my-haxe-build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+        - ubuntu-latest
+        - macos-latest
+        - windows-latest
+        haxe:
+        - nightly # latest development build
+        - latest  # latest stable release
+        - 4.2.5
+        - 3.4.7
+
+    steps:
+    - name: Git Checkout
+      uses: actions/checkout@v3
+
+    - name: "Install: Haxe ${{ matrix.haxe }} and Haxe Libraries"
+      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
+      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
+      with:
+        haxe-version: ${{ matrix.haxe }}
+        haxe-libs: | # haxe libraries to be installed:
+          hscript               # install latest version from lib.haxe.org
+          haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
+          haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
+          haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+
+    # ... custom steps to compile/test Haxe code
+```
+
 
 ### <a name="setup-haxe-targets-action"></a>Install Haxe compiler targets using the `setup-haxe-targets` action
+
+The `setup-haxe-targets-action` can be used to "only" install Haxe compiler targets.
 
 ```yaml
 name: My Haxe Build

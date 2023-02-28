@@ -7,9 +7,8 @@ name: Setup Haxe
 description: Installs and configures the Haxe compiler
 
 inputs:
-  haxe-version:
-    default: latest
-    description: "Version of Haxe to install (nightly, latest or a version number)"
+  haxe-version: { required: true, description: "Version of Haxe to install (nightly, latest or a version number)" }
+  haxe-libs:    { required: false, description: "Haxe libs to install, separated by space or new-line, e.g. 'hscript format@1.0.0'" }
 
   # internal:
   haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
@@ -74,7 +73,7 @@ runs:
         if [[ -n "${{ github.token }}" ]]; then
           auth_header='-H "Authorization: token ${{ github.token }}"'
         fi
-        
+
         export PATH="$HAXE_HOME:$PATH"
 
         case "${{ runner.os }}" in
@@ -150,3 +149,13 @@ runs:
       shell: bash
       run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
 
+
+    - name: "Install: yq" # https://github.com/mikefarah/yq
+      uses: vegardit/gha-setup-yq@v1
+
+    - name: "Install: Haxelibs"
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/install-haxelibs
+      if: inputs.haxe-libs != ''
+      with:
+        haxe-version: ${{ inputs.haxe-version }}
+        haxe-libs:    ${{ inputs.haxe-libs }}
