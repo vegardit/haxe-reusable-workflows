@@ -68,8 +68,8 @@ jobs:
         haxe-libs: |
           haxe-doctest          # install latest version from lib.haxe.org
           haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
-          haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
-          haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+          haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
+          haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
         test-cpp: true
         test-cs: true

@@ -26,7 +26,7 @@ on Ubuntu, MacOS, or Windows.
 
 The workflows/actions do the heavy lifting of installing compatible versions of required compiler targets with the correct configuration/libraries depending on the runner OS and the desired Haxe version.
 
-For faster re-runs caching of haxe libraries and other components is configured.
+For faster re-runs caching of Haxe libraries and other components is configured.
 
 
 ## Usage <a name="usage"></a>Usage
@@ -125,8 +125,8 @@ jobs:
       haxe-libs: | # haxe libraries to be installed:
         hscript               # install latest version from lib.haxe.org
         haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
-        haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
-        haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+        haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
+        haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
       # Haxe targets to test with, by default all are set to false:
       test-cpp:  true
@@ -281,8 +281,8 @@ jobs:
         haxe-libs: | # haxe libraries to be installed:
           hscript               # install latest version from lib.haxe.org
           haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
-          haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
-          haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+          haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
+          haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
 
         # Haxe targets to test with, by default all are set to false:
@@ -358,8 +358,8 @@ jobs:
         haxe-libs: | # haxe libraries to be installed:
           hscript               # install latest version from lib.haxe.org
           haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
-          haxe-files@https://github.com/vegardit/haxe-files # install version from default git branch
-          haxe-strings@https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+          haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
+          haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
     # ... custom steps to compile/test Haxe code
 ```

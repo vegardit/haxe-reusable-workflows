@@ -102,10 +102,10 @@ runs:
 
             lib_name="${lib%%@*}"
             lib_ver="$(echo "$lib" | cut -s -d@ -f2)"
-    
+
             # install from git
-            if [[ $lib_ver == *://* ]]; then
-              IFS='#' read -r -a lib_ver_splitted <<< "$lib_ver"
+            if [[ $lib_ver == git:* ]]; then
+              IFS='#' read -r -a lib_ver_splitted <<< "${lib_ver:4}"
 
               # in case it was already loaded from cache, delete it to prevent git errors like "You have divergent branches and need to specify how to reconcile them."
               rm -rf "$HAXELIB_PATH/$lib_name/git"
@@ -113,7 +113,7 @@ runs:
               (set -x; haxelib git --always "$lib_name" "${lib_ver_splitted[0]}" ${lib_ver_splitted[1]:-}) || exit $?
               continue;
             fi
-    
+
             # install from lib.haxe.org using curl instead of haxelib, which is faster and more robust
             pushd "$HOME"
               if [[ -z $lib_ver ]]; then
@@ -122,7 +122,7 @@ runs:
                   "https://lib.haxe.org/api/3.0/index.n?__x=ay3:apiy16:getLatestVersionhay${#lib_name}:${lib_name}h" \
                 | cut -d: -f2)
               fi
-                
+
               if [[ ! -f $HAXELIB_PATH/$lib_name/${lib_ver//./,}/haxelib.json ]]; then
                 (set -x; curl -sSfL --connect-timeout 10 --retry 3 "https://lib.haxe.org/p/$lib_name/$lib_ver/download/" -o "$lib_name.zip") || exit $?
                 (set -x; haxelib --always install "$lib_name.zip")
