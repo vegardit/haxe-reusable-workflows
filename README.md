@@ -352,7 +352,6 @@ jobs:
 
     - name: "Install: Haxe ${{ matrix.haxe }} and Haxe Libraries"
       uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
-      uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
       with:
         haxe-version: ${{ matrix.haxe }}
         haxe-libs: | # haxe libraries to be installed:
