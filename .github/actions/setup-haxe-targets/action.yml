@@ -6,14 +6,14 @@
 name: Setup Haxe Targets
 description: Installs and configures Haxe compiler targets
 inputs:
-  setup-cs:     { default: "true", description: "true or false or Mono version" }
-  setup-flash:  { default: "true", description: "true or false or Flash version" }
-  setup-hl:     { default: "true", description: "true or false" }
-  setup-java:   { default: "true", description: "true or false or Java version" }
-  setup-lua:    { default: "true", description: "true or false or Lua version" }
-  setup-node:   { default: "true", description: "true or false or Node.js version" }
-  setup-php:    { default: "true", description: "true or false or PHP version" }
-  setup-python: { default: "true", description: "true or false or Python version" }
+  setup-cs:     { default: "false", description: "true or false or Mono version" }
+  setup-flash:  { default: "false", description: "true or false or Flash version" }
+  setup-hl:     { default: "false", description: "true or false" }
+  setup-java:   { default: "false", description: "true or false or Java version" }
+  setup-lua:    { default: "false", description: "true or false or Lua version" }
+  setup-node:   { default: "false", description: "true or false or Node.js version" }
+  setup-php:    { default: "false", description: "true or false or PHP version" }
+  setup-python: { default: "false", description: "true or false or Python version" }
 
   # internal:
   haxe-reusable-workflows-repo:    { default: "vegardit/haxe-reusable-workflows", description: "Repository containing the setup-haxe-targets action" }
