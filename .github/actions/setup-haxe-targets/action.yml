@@ -30,12 +30,17 @@ outputs:
 runs:
   using: "composite"
   steps:
-
     - name: Process input parameter
       shell: bash
       run: |
         # Convert inputs that might be passed as boolean or string to strings so we can safely do
         # {{ env.SETUP_CS == 'true' }} instead of {{ inputs.setup-cs == 'true' || inputs.setup-cs == true }}
+
+        # Lua requires Python for installation
+        setup_python="${{ inputs.setup-python }}"
+        if [[ "${{ inputs.setup-lua }}" != "false" && $setup_python == "false" ]]; then
+          setup_python="true"
+        fi
 
         cat <<EOF >> $GITHUB_ENV
         SETUP_CS=${{     inputs.setup-cs }}
@@ -45,7 +50,7 @@ runs:
         SETUP_LUA=${{    inputs.setup-lua }}
         SETUP_NODE=${{   inputs.setup-node }}
         SETUP_PHP=${{    inputs.setup-php }}
-        SETUP_PYTHON=${{ inputs.setup-python }}
+        SETUP_PYTHON=$setup_python
         EOF
 
 
@@ -122,7 +127,7 @@ runs:
         php-version: ${{ env.SETUP_PHP == 'true' && '7.4' || env.SETUP_PHP }}
 
     - name: Setup [python]
-      if: env.SETUP_PYTHON != 'false' || env.SETUP_LUA != 'false' # Lua requires Python for installation
+      if: env.SETUP_PYTHON != 'false'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-python
       with:
         python-version: ${{ env.SETUP_PYTHON == 'true' && '3.11' || env.SETUP_PYTHON }}
