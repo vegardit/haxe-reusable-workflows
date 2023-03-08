@@ -155,7 +155,6 @@ runs:
 
     - name: "Install: Haxelibs"
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/install-haxelibs
-      if: inputs.haxe-libs != ''
       with:
         haxe-version: ${{ inputs.haxe-version }}
         haxe-libs:    ${{ inputs.haxe-libs }}
