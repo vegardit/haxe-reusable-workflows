@@ -65,6 +65,12 @@ runs:
           echo "${!1}"
         }
 
+        if [[ ${ACT:-false} == "true" ]]; then
+          # workaround for: Error in if-expression: "if: env.TEST_JVM == 'true' && env.TEST_JVM_VERSION != env.TEST_JAVA_VERSION" (TODO: evaluateCompare not implemented! left: invalid, right: invalid)
+          # see also https://github.com/nektos/act/issues/1643
+          echo "TEST_JAVA_VERSION=" > $GITHUB_ENV
+        fi
+
         for target in CPP CS EVAL FLASH HL JAVA JVM LUA NEKO NODE PHP PYTHON; do
           target_args="${{ inputs.haxe-args }}"
           target_allow_failure="false"
