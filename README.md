@@ -127,6 +127,8 @@ jobs:
         haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
         haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
         haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+      output-dir: binaries # output folder for compilation artifacts relative to work-dir
+      work-dir: module1    # working directory (CWD)
 
       # Haxe targets to test with, by default all are set to false:
       test-cpp:  true
@@ -283,6 +285,8 @@ jobs:
           haxe-concurrent@4.1.0 # install fixed version from lib.haxe.org
           haxe-files@git:https://github.com/vegardit/haxe-files # install version from default git branch
           haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
+        output-dir: binaries # output folder for compilation artifacts relative to work-dir
+        work-dir: module1    # working directory (CWD)
 
 
         # Haxe targets to test with, by default all are set to false:

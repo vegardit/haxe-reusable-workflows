@@ -12,6 +12,7 @@ on:
       haxe-libs:    { required: false,       type: string, description: "Haxe libs to install, separated by space or new-line, e.g. 'hscript format@1.0.0'" }
       haxe-args:    { default: "tests.hxml", type: string, description: "Haxe compiler arguments" }
       output-dir:   { default: "target",     type: string, description: "output folder for compilation artifacts"}
+      work-dir:     { default: ".",          type: string, description: "Working directory, defaults to repo root" }
 
       test-cpp:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
       test-cs:     { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
@@ -182,6 +183,7 @@ jobs:
     ##################################################
 
     - name: Create output dir '${{ inputs.output-dir }}'
+      working-directory: ${{ inputs.work-dir }}
       run: mkdir -p "${{ inputs.output-dir }}"
 
     - name: "Before Tests: Custom Bash script"
@@ -189,6 +191,7 @@ jobs:
       #shell: ${{ inputs.before-tests-shell }}
       env:
         GITHUB_JOB_ID: ${{ github.job }}
+      working-directory: ${{ inputs.work-dir }}
       run: ${{ inputs.before-tests }}
 
 
@@ -199,6 +202,7 @@ jobs:
       if: env.TEST_NEKO == 'true'
       continue-on-error: ${{ env.TEST_NEKO_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_NEKO_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run:  |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -221,6 +225,7 @@ jobs:
       if: env.TEST_EVAL == 'true'
       continue-on-error: ${{ env.TEST_EVAL_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_EVAL_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -246,6 +251,7 @@ jobs:
       if: env.TEST_HL == 'true'
       continue-on-error: ${{ env.TEST_HL_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_HL_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -273,6 +279,7 @@ jobs:
       if: env.TEST_FLASH == 'true'
       continue-on-error: ${{ env.TEST_FLASH_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_FLASH_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -305,6 +312,7 @@ jobs:
       if: env.TEST_JAVA == 'true'
       continue-on-error: ${{ env.TEST_JAVA_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_JAVA_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -329,6 +337,7 @@ jobs:
       if: env.TEST_JVM == 'true'
       continue-on-error: ${{ env.TEST_JVM_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_JVM_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -357,6 +366,7 @@ jobs:
       if: env.TEST_NODE == 'true'
       continue-on-error: ${{ env.TEST_NODE_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_NODE_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -385,6 +395,7 @@ jobs:
       if: env.TEST_PHP == 'true'
       continue-on-error: ${{ env.TEST_PHP_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_PHP_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -413,6 +424,7 @@ jobs:
       if: env.TEST_PYTHON == 'true'
       continue-on-error: ${{ env.TEST_PYTHON_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_PYTHON_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -441,6 +453,7 @@ jobs:
       if: env.TEST_LUA == 'true'
       continue-on-error: ${{ env.TEST_LUA_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_LUA_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -489,6 +502,7 @@ jobs:
       if: env.TEST_CPP == 'true'
       continue-on-error: ${{ env.TEST_CPP_ALLOW_FAILURE == 'true' }}
       timeout-minutes: ${{ fromJSON(env.TEST_CPP_TIMEOUT) }}
+      working-directory: ${{ inputs.work-dir }}
       run: |
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
@@ -516,6 +530,7 @@ jobs:
     ##################################################
     - name: "After Tests: Custom Bash script"
       if: always() && inputs.after-tests
+      working-directory: ${{ inputs.work-dir }}
       #shell: ${{ inputs.after-tests-shell }}
       env:
         GITHUB_JOB_ID: ${{ github.job }}
