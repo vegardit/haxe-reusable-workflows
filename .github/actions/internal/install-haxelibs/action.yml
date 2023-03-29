@@ -137,7 +137,7 @@ runs:
         fi
 
         if [[ -f haxelib.json ]]; then
-          haxelib dev "$(yq .name haxelib.json)" .
+          (set -x; haxelib dev "$(yq -oy .name haxelib.json)" .)
         fi
         echo "::endgroup::"
 
