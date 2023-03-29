@@ -130,7 +130,7 @@ runs:
           *) # Linux/MacOS
             echo "::group::Setup Lua: Install hererocks"
               case "${{ runner.os }}" in
-                Linux) sudo apt-get install -y build-essential libpcre3-dev libssl-dev libreadline-dev cmake unzip ;;
+                Linux) sudo apt-get install -y --no-install-recommends build-essential libpcre3-dev libssl-dev libreadline-dev cmake unzip ;;
                 macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
               esac
               if ! hash hererocks 2>/dev/null; then

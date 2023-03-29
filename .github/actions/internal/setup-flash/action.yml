@@ -44,7 +44,7 @@ runs:
 
         case "${{ runner.os }}" in
           Linux)
-            sudo apt-get install -y \
+            sudo apt-get install -y --no-install-recommends \
               libcurl3-gnutls \
               libglib2.0-0 \
               libgtk2.0-0 \

@@ -46,7 +46,7 @@ runs:
               os_release=$(lsb_release -cs)
               if [[ $os_release == "jammy" ]]; then os_release=focal; fi
               sudo apt-add-repository -y "deb https://download.mono-project.com/repo/ubuntu $os_release main"
-              sudo apt-get install -y "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
+              sudo apt-get install -y --no-install-recommends "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
               ;;
             macOS)
             
