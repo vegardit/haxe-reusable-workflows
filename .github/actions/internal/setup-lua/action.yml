@@ -79,16 +79,27 @@ runs:
 
             echo "::group::Setup Lua: Install mingw/pcre"
               pushd "$CACHE_FOLDER"
+                # for Haxe < 4.3
                 pcre_pkg="mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst"
                 if [[ ! -f "$pcre_pkg" ]]; then
                   rm -f mingw-*-pcre-*.pkg.tar.zst
                   curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
                 fi
-
                 ls -l $pcre_pkg
                 zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
                 cp /bin/libpcre*.dll $LUA_HOME/bin
                 lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+
+                # for Haxe >= 4.3
+                pcre_pkg="mingw-w64-x86_64-pcre2-10.42-1-any.pkg.tar.zst"
+                if [[ ! -f "$pcre_pkg" ]]; then
+                  rm -f mingw-*-pcre2-*.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
+                fi
+                ls -l $pcre_pkg
+                zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
+                cp /bin/libpcre*.dll $LUA_HOME/bin
+                lualib_install_opts+=" PCRE2_INCDIR=$(cygpath -wsa /include) PCRE2_LIBDIR=$(cygpath -wsa /lib)"
               popd
             echo "::endgroup::"
 
@@ -130,7 +141,7 @@ runs:
           *) # Linux/MacOS
             echo "::group::Setup Lua: Install hererocks"
               case "${{ runner.os }}" in
-                Linux) sudo apt-get install -y --no-install-recommends build-essential libpcre3-dev libssl-dev libreadline-dev cmake unzip ;;
+                Linux) sudo apt-get install -y --no-install-recommends build-essential libpcre2-dev libssl-dev libreadline-dev cmake unzip ;;
                 macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
               esac
               if ! hash hererocks 2>/dev/null; then
@@ -164,7 +175,8 @@ runs:
         if [[ $LUA_VERSION == 5.1* ]]; then
           lualibs+=" bit32@5.2.2-1"
         fi
-        lualibs+=" lrexlib-pcre@2.9.1-1"
+        lualibs+=" lrexlib-pcre@2.9.1-1"  # haxe < 4.3
+        lualibs+=" lrexlib-pcre2@2.9.1-1" # haxe >= 4.3
         lualibs+=" luasocket@3.1.0-1"
         lualibs+=" luautf8@0.1.5-2"
         lualibs+=" luv@1.44.2-1"
