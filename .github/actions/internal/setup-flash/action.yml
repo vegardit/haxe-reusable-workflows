@@ -26,7 +26,6 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Flash: Cache"
-      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache@v3 # https://github.com/actions/cache
       with:
         path: ${{ inputs.cache-folder }}

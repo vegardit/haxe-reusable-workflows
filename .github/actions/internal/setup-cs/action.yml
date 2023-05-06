@@ -18,7 +18,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup C#: Cache"
-      if: ${{ runner.os == 'Windows' && !env.ACT }} # https://github.com/nektos/act#skipping-steps
+      if: runner.os == 'Windows'
       uses: actions/cache@v3 # https://github.com/actions/cache
       with:
         path: ${{ inputs.cache-folder }}

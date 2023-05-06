@@ -15,7 +15,6 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Hashlink: Cache"
-      if: ${{ env.ACT != 'true' }} # https://github.com/nektos/act#skipping-steps
       uses: actions/cache@v3 # https://github.com/actions/cache
       with:
         path: ${{ inputs.cache-folder }}

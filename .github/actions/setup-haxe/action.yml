@@ -55,7 +55,7 @@ runs:
         neko-version: ${{ startsWith(inputs.haxe-version, '3.') && '2.1.0' || 'latest' }}
 
     - name: "Setup Haxe: Cache"
-      if: ${{ env.ACT != 'true' && inputs.haxe.version != 'nightly' }} # https://github.com/nektos/act#skipping-steps
+      if: inputs.haxe.version != 'nightly'
       uses: actions/cache@v3 # https://github.com/actions/cache
       with:
         path: ${{ runner.temp }}/haxe/sdk/haxe-${{ inputs.haxe-version }}

@@ -20,7 +20,6 @@ runs:
     ##################################################
     - name: "Haxe Libs Cache: Restore"
       id: HAXE-LIBS-CACHE-RESTORE
-      if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
       uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
       with:
         path: |
