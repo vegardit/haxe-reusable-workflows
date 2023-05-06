@@ -47,9 +47,10 @@ jobs:
         - macos-latest
         - windows-latest
         haxe:
-        #- nightly
+        - nightly
+        - 4.3.1
         - 4.2.5
-        #- 3.4.7
+        - 3.4.7
 
     steps:
     - name: Show environment variables
