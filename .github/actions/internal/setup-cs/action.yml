@@ -11,7 +11,7 @@ inputs:
     default: "${{ runner.temp}}/haxe/targets/mono"
     description: Path to store downloaded files
   mono-version:
-    default: 6.12.0.182
+    default: "6.12"
     description: Mono version to install
 
 runs:
@@ -39,17 +39,17 @@ runs:
         set -euox pipefail
 
         installed_mono_version=$((mono --version 2>/dev/null || true) | head -n 1 | cut -d' ' -f5)
-        if [[ $installed_mono_version != "$MONO_VERSION" ]]; then
+        if [[ $installed_mono_version != "$MONO_VERSION"* ]]; then
           case "${{ runner.os }}" in
             Linux)
               sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
               os_release=$(lsb_release -cs)
               if [[ $os_release == "jammy" ]]; then os_release=focal; fi
               sudo apt-add-repository -y "deb https://download.mono-project.com/repo/ubuntu $os_release main"
+              apt-cache madison mono-devel
               sudo apt-get install -y --no-install-recommends "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
               ;;
             macOS)
-            
               # not possible to easily install specific releases by version number, see https://itnext.io/how-to-install-an-older-brew-package-add141e58d32
               # one needs to find the correct commit in the homebrew repo to do so
               # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/2680713cb66fc2e52b945c66a942ffdf5254b5b1/Formula/mono.rb
@@ -61,7 +61,16 @@ runs:
 
               monoMSI="$CACHE_FOLDER/mono-$MONO_VERSION.msi"
               if [[ ! -f $monoMSI ]]; then
-                curl -sSfL https://download.mono-project.com/archive/${MONO_VERSION%.*}/windows-installer/mono-${MONO_VERSION}-x64-0.msi -o $monoMSI
+                IFS='.' read -ra version_parts <<< "$MONO_VERSION"
+                wanted_patch_version=""
+                for ((i = 0; i < ${#version_parts[@]} && i < 3; i++)); do             
+                  wanted_patch_version="${wanted_patch_version}${version_parts[i]}."
+                done
+                wanted_patch_version="${wanted_patch_version%.}"
+
+                resolved_patch_version=$(curl -sSfL https://download.mono-project.com/archive/ | sed -n "s/.*>\(${wanted_patch_version//./\\.}[.0-9]*\)\/.*/\1/p" | tail -1)
+                resolved_mono_version=$(curl -sSfL https://download.mono-project.com/archive/${resolved_patch_version}/windows-installer/ | sed -n "s/.*mono-\(${resolved_patch_version//./\\.}[.0-9]*\)-.*/\1/p" | tail -1)
+                curl -sSfL https://download.mono-project.com/archive/${resolved_patch_version}/windows-installer/mono-${resolved_mono_version}-x64-0.msi -o $monoMSI
               fi
               pushd $HOME
                 tail --follow=name --retry mono.log 2>/dev/null | dos2unix -f &

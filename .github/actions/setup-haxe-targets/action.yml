@@ -132,14 +132,14 @@ runs:
       with:
         python-version: ${{ env.SETUP_PYTHON == 'true' && '3.11' || env.SETUP_PYTHON }}
 
+    - name: Setup [cs]
+      if: env.SETUP_CS != 'false'
+      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-cs
+      with:
+        mono-version: ${{ env.SETUP_CS == 'true' && '6.12' || env.SETUP_CS }}
+
     - name: Setup [lua]
       if: env.SETUP_LUA != 'false'
       uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-lua
       with:
         lua-version: ${{ env.SETUP_LUA == 'true' && '5.3.6' || env.SETUP_LUA }}
-
-    - name: Setup [cs]
-      if: env.SETUP_CS != 'false'
-      uses: ./.github/temp/haxe-reusable-workflows/.github/actions/internal/setup-cs
-      with:
-        mono-version: ${{ env.SETUP_CS == 'true' && '6.12.0.182' || env.SETUP_CS }}
