@@ -125,7 +125,7 @@ jobs:
       run: env | sort
 
     - name: Git Checkout
-      uses: actions/checkout@v3 #https://github.com/actions/checkout
+      uses: actions/checkout@v4 #https://github.com/actions/checkout
 
 
     ##################################################
@@ -136,7 +136,7 @@ jobs:
     # - https://github.com/community/community/discussions/31054
     - name: "Git checkout workflow repo"
       if: env.ACT != 'true' # https://github.com/nektos/act#skipping-steps
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         path: ./.github/temp/haxe-reusable-workflows
         repository: ${{ inputs.haxe-reusable-workflows-repo }}
@@ -154,7 +154,7 @@ jobs:
           if [[ -f ./.github/actions/setup-haxe-targets/action.yml ]]; then
             (set -x; ln -s "$PWD" ./.github/temp/haxe-reusable-workflows)
           else
-            # checkout "actions/checkout@v3" fails with "using ::error::Input required and not supplied: token", so we do it old school
+            # checkout "actions/checkout@v4" fails with "using ::error::Input required and not supplied: token", so we do it old school
             (set -x; git clone "https://github.com/${{ inputs.haxe-reusable-workflows-repo }}" \
                --depth 1 --single-branch \
                -b "${{ inputs.haxe-reusable-workflows-version }}" \
