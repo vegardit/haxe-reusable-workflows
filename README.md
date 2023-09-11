@@ -195,7 +195,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Test with Haxe
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
@@ -273,7 +273,7 @@ jobs:
 
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Test with Haxe
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
@@ -352,7 +352,7 @@ jobs:
 
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: "Install: Haxe ${{ matrix.haxe }} and Haxe Libraries"
       uses: vegardit/haxe-reusable-workflows/.github/actions/setup-haxe@v1
@@ -397,7 +397,7 @@ jobs:
 
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: "Install: Haxe compiler targets"
       id: setup-haxe-targets
