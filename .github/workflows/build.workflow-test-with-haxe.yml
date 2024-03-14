@@ -63,7 +63,7 @@ jobs:
           haxe-strings@git:https://github.com/vegardit/haxe-strings#v7.0.2 # install version from specific git tag
 
       test-cpp: true
-      test-cs: true
+      test-cs: ${{ matrix.haxe != 'nightly' }} # C# support removed from Haxe 5
       test-eval: true
       test-flash: |
         haxe-args: "tests-flash.hxml"
@@ -73,6 +73,7 @@ jobs:
         allow-failure: true
       test-hl: ${{ matrix.haxe != '3.4.7' }}
       test-java: |
+        enabled: ${{ matrix.haxe != 'nightly' }} # Java support removed from Haxe 5
         java-version: 17
       test-jvm: true
       test-lua: |
