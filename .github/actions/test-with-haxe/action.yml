@@ -330,16 +330,33 @@ runs:
         echo "::group::Test [jvm]"
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
-        (set -x; haxe $TEST_JVM_ARGS -D jvm -java ${{ inputs.output-dir }})
 
-        max_attempts=$((1 + $TEST_JVM_RETRIES))
-        for i in $(seq 1 $max_attempts); do
-          echo -e "$i. of $max_attempts attempt(s)...\n====================="
-          (set -x; java -jar ${{ inputs.output-dir }}/*.jar) && exit_code=0 || exit_code=$?
-          if [[ $exit_code -eq 0 ]]; then break;
-          elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
-          else sleep 5; fi
-        done
+        # Haxe 3.x
+        if [[ "${{ inputs.haxe-version }}" == 3.* ]]; then
+          (set -x; haxe $TEST_JVM_ARGS -D jvm -java ${{ inputs.output-dir }})
+
+          max_attempts=$((1 + $TEST_JVM_RETRIES))
+          for i in $(seq 1 $max_attempts); do
+            echo -e "$i. of $max_attempts attempt(s)...\n====================="
+            (set -x; java -jar ${{ inputs.output-dir }}/*.jar) && exit_code=0 || exit_code=$?
+            if [[ $exit_code -eq 0 ]]; then break;
+            elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+            else sleep 5; fi
+          done
+
+        # Haxe 4+
+        else
+          (set -x; haxe $TEST_JVM_ARGS --jvm ${{ inputs.output-dir }}/tests.jar)
+
+          max_attempts=$((1 + $TEST_JVM_RETRIES))
+          for i in $(seq 1 $max_attempts); do
+            echo -e "$i. of $max_attempts attempt(s)...\n====================="
+            (set -x; java -jar ${{ inputs.output-dir }}/tests.jar) && exit_code=0 || exit_code=$?
+            if [[ $exit_code -eq 0 ]]; then break;
+            elif [[ $i -eq $max_attempts ]]; then exit $exit_code;
+            else sleep 5; fi
+          done
+        fi
         echo "::endgroup::"
 
 
