@@ -10,6 +10,9 @@ inputs:
   lua-version: 
     default: "5.3.6"
     description: "Lua version"
+  luarocks-version: 
+    default: "3.11.0"
+    description: "Luarocks version"
   cache-folder:
     default: "${{ runner.temp}}/haxe/targets/lua"
     description: Path to store downloaded installation files
@@ -23,10 +26,17 @@ runs:
         path: ${{ inputs.cache-folder }}
         key: ${{ runner.os }}-lua-${{ inputs.lua-version }}
 
+    - name: "Enable MSYS2 bash" # https://github.com/actions/runner/issues/497
+      if: ${{ runner.os == 'Windows' }}
+      shell: cmd
+      run: |
+        echo C:\msys64\usr\bin>>%GITHUB_PATH%
+        
     - name: "Setup Lua: Install Binaries"
       env:
         CACHE_FOLDER: ${{ inputs.cache-folder }}
         LUA_VERSION: ${{ inputs.lua-version }}
+        LUAROCKS_VERSION: ${{ inputs.luarocks-version }}
         # https://docs.brew.sh/Manpage#environment
         HOMEBREW_NO_ANALYTICS: "1"
         HOMEBREW_NO_AUTO_UPDATE: "1"
@@ -42,23 +52,36 @@ runs:
         LUA_HOME=$HOME/lua
         lualibs=
         lualib_install_opts=
+
+        echo "::group::Setup Lua: Install hererocks"
+          curl -sSfL https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py -o /tmp/hererocks.py
+        echo "::endgroup::"
+
         case "${{ runner.os }}" in
           Windows)
-            echo "::group::Setup Lua: Show compiler config"
-              which gcc --all
-              gcc --version
+            echo "::group::Setup Lua: Setup UCRT platform"
+              # workaround for "undefined reference to `__acrt_iob_func'" -> current mingw cannot compile luasocket with MSVCRT runtime
+              pacman -S --needed --noconfirm base-devel mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-make
+              export PATH=/ucrt64/bin:$PATH
 
-              which ld --all
-              ld --version
-
-              # Linker Search Path
-              ld --verbose | grep SEARCH_DIR | tr -s ';' \n
+              cat <<EOF > /tmp/luarocks-config.lua # https://github.com/luarocks/luarocks/wiki/Config-file-format
+        variables = {
+          MSVCRT = "ucrt"
+        }
+        EOF
+              export LUAROCKS_CONFIG=$(cygpath -w /tmp/luarocks-config.lua)
             echo "::endgroup::"
 
-            echo "::group::Setup Lua: Install hererocks"
-              if ! hash hererocks 2>/dev/null; then
-                pip install hererocks
-              fi
+            echo "::group::Setup Lua: Show compiler config"
+              which gcc --all
+              (set -x; gcc --version)
+              (set -x; ldd $(which gcc)) # on Windows to determine which GCC version is active MSVCRT or UCRT
+
+              which ld --all
+              (set -x; ld --version)
+
+              # Linker Search Path
+              (set -x; ld --verbose | grep SEARCH_DIR | tr -s ';' \\n)
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Install Lua and LuaRocks"
@@ -70,82 +93,74 @@ runs:
               else
                 rm -rf $LUA_HOME
                 mkdir -p "$CACHE_FOLDER/luarocks_downloads"
-                hererocks "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION -rlatest --target=mingw --downloads "$(cygpath "$CACHE_FOLDER/luarocks_downloads")"
+                (set -x; python /tmp/hererocks.py "$(cygpath -wa "$LUA_HOME")" --lua $LUA_VERSION --luarocks $LUAROCKS_VERSION --target=mingw --downloads "$(cygpath "$CACHE_FOLDER/luarocks_downloads")")
               fi
-              echo "$(cygpath -w "$LUA_HOME/bin")" >> "$GITHUB_PATH"
               export PATH="$LUA_HOME/bin:$PATH"
+              echo "$(cygpath -w "$LUA_HOME/bin")" >> "$GITHUB_PATH"
+
+              # when cmake is installed hererocks or luarocks falsely points make to cmake resulting in "CMake Error: Unknown argument -f"
+              sed -i '/^ *MAKE *=/d' $LUA_HOME/luarocks/config-*.lua
+
+              # workaround for "Error: Failed finding Lua library. You may need to configure LUA_LIBDIR."
+              # see https://github.com/luarocks/luarocks/issues/905
+              $luarocks_cmd config variables.LUA_LIBDIR "$(cygpath -w "$LUA_HOME/bin")"
+              # solve undefined reference to `luaL_error' because we had to change LUA_LIBDIR
+              cp -f "$LUA_HOME/lib/"liblua*.a "$LUA_HOME/bin/liblua.a"
             echo "::endgroup::"
 
-            echo "::group::Setup Lua: Install mingw/pcre"
+            echo "::group::Setup Lua: Show luarocks config"
+              $luarocks_cmd config
+            echo "::endgroup::"
+
+            function install_mingw_package() {
               pushd "$CACHE_FOLDER"
-                # for Haxe < 4.3
-                pcre_pkg="mingw-w64-x86_64-pcre-8.45-1-any.pkg.tar.zst"
-                if [[ ! -f "$pcre_pkg" ]]; then
-                  rm -f mingw-*-pcre-*.pkg.tar.zst
-                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
+                pkg=mingw-w64-x86_64-$1-$2-any.pkg.tar.zst
+                echo "Installing [$pkg]..."
+                if [[ ! -f $pkg ]]; then
+                  rm -f mingw-w64-x86_64-$1-*-any.pkg.tar.zst
+                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pkg -o $pkg
                 fi
-                ls -l $pcre_pkg
-                zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
-                cp /bin/libpcre*.dll $LUA_HOME/bin
+                ls -l $pkg
+                zstd -d -c $pkg | tar -x --strip-components=1 -C /
+              popd
+            }
+
+            echo "::group::Setup Lua: Install mingw/pcre"
+                # for Haxe < 4.3
+                install_mingw_package "pcre" "8.45-1"
                 lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
 
                 # for Haxe >= 4.3
-                pcre_pkg="mingw-w64-x86_64-pcre2-10.42-1-any.pkg.tar.zst"
-                if [[ ! -f "$pcre_pkg" ]]; then
-                  rm -f mingw-*-pcre2-*.pkg.tar.zst
-                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$pcre_pkg -o $pcre_pkg
-                fi
-                ls -l $pcre_pkg
-                zstd -d -c $pcre_pkg | tar -x --strip-components=1 -C /
-                cp /bin/libpcre*.dll $LUA_HOME/bin
+                install_mingw_package "pcre2" "10.43-2"
                 lualib_install_opts+=" PCRE2_INCDIR=$(cygpath -wsa /include) PCRE2_LIBDIR=$(cygpath -wsa /lib)"
-              popd
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Install mingw/openssl"
-              pushd "$CACHE_FOLDER"
                 # https://github.com/brunoos/luasec/issues/150#issuecomment-1416754488
-                openssl_pkg="mingw-w64-x86_64-openssl-1.1.1.s-1-any.pkg.tar.zst"
-                if [[ ! -f "$openssl_pkg" ]]; then
-                  rm -f mingw-*-openssl-*.pkg.tar.zst
-                  curl -sSfL https://repo.msys2.org/mingw/mingw64/$openssl_pkg -o $openssl_pkg
-                fi
-
-                ls -l $openssl_pkg
-                zstd -d -c $openssl_pkg | tar -x --strip-components=1 -C /
-                cp /bin/libcrypto*.dll $LUA_HOME/bin
-                cp /bin/libssl*.dll $LUA_HOME/bin
+                install_mingw_package "openssl" "1.1.1.s-1"
                 lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
-              popd
             echo "::endgroup::"
 
-            echo "::group::Setup Lua: Patch luarocks/hx-lua-simdjson"
+            echo "::group::Setup Lua: Prepare hx-lua-simdjson"
+              curl -sSfL https://raw.githubusercontent.com/sebthom/hx-lua-simdjson/master/hx-lua-simdjson-scm-0.rockspec -o $CACHE_FOLDER/hx-lua-simdjson-scm-0.rockspec
+              lualibs+=" $(cygpath -wa "$CACHE_FOLDER/hx-lua-simdjson-scm-0.rockspec")"
               #lualibs+=" hx-lua-simdjson@0.0.1-1"
-              curl -sSfL https://raw.githubusercontent.com/inklit/hx-lua-simdjson/master/hx-lua-simdjson-0.0.1-0.rockspec | sed 's/tag = "0.0.2"/branch = "master"/' > $HOME/hx-lua-simdjson-0.0.1-0.rockspec
-              lualibs+=" $(cygpath -wa "$HOME/hx-lua-simdjson-0.0.1-0.rockspec")"
-              if [[ ! -e lua.dll ]]; then
-                cp $LUA_HOME/bin/lua*.dll $LUA_HOME/bin/lua.dll 
-                cp $LUA_HOME/lib/liblua*.a $LUA_HOME/lib/lua.a
-              fi
             echo "::endgroup::"
 
-            echo "::group::Setup Lua: Patch luarocks/environ"
-              #lualibs+=" environ@0.1.0-1" # for Haxe 3
+            echo "::group::Setup Lua: Patch luarocks/environ" # for Haxe 3
               # https://github.com/moteus/lua-environ/issues/1
-              curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $HOME/environ-0.1.0-1.rockspec
-              lualibs+=" $(cygpath -wa "$HOME/environ-0.1.0-1.rockspec")"
+              curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $CACHE_FOLDER/environ-0.1.0-1.rockspec
+              lualibs+=" $(cygpath -wa "$CACHE_FOLDER/environ-0.1.0-1.rockspec")"
+              #lualibs+=" environ@0.1.0-1"
             echo "::endgroup::"
             ;;
 
           *) # Linux/MacOS
-            echo "::group::Setup Lua: Install hererocks"
+            echo "::group::Setup Lua: Install hererocks dependencies"
               case "${{ runner.os }}" in
                 Linux) sudo apt-get install -y --no-install-recommends build-essential libpcre2-dev libssl-dev libreadline-dev cmake unzip ;;
                 macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
               esac
-              if ! hash hererocks 2>/dev/null; then
-                pip install hererocks
-              fi
             echo "::endgroup::"
  
             echo "::group::Setup Lua: Install Lua and Luarocks"
@@ -156,7 +171,7 @@ runs:
               else
                 rm -rf $LUA_HOME
                 mkdir -p "$CACHE_FOLDER/luarocks_downloads"
-                hererocks $LUA_HOME --lua $LUA_VERSION -rlatest --downloads "$CACHE_FOLDER/luarocks_downloads"
+                python /tmp/hererocks.py $LUA_HOME --lua $LUA_VERSION -rlatest --downloads "$CACHE_FOLDER/luarocks_downloads"
               fi
               echo "$LUA_HOME/bin" >> $GITHUB_PATH
               export PATH="$LUA_HOME/bin:$PATH"
@@ -174,12 +189,12 @@ runs:
         if [[ $LUA_VERSION == 5.1* ]]; then
           lualibs+=" bit32@5.2.2-1"
         fi
-        lualibs+=" lrexlib-pcre@2.9.1-1"  # haxe < 4.3
-        lualibs+=" lrexlib-pcre2@2.9.1-1" # haxe >= 4.3
+        lualibs+=" lrexlib-pcre@2.9.2-1"  # haxe < 4.3
+        lualibs+=" lrexlib-pcre2@2.9.2-1" # haxe >= 4.3
         lualibs+=" luasocket@3.1.0-1"
         lualibs+=" luautf8@0.1.5-2"
         lualibs+=" luv@1.44.2-1"
-        lualibs+=" luasec@1.3.0-1"
+        lualibs+=" luasec@1.3.2-1"
 
         for lib in $lualibs; do
           echo "::group::Setup Lua: Install Lua module [$lib]"
@@ -197,7 +212,47 @@ runs:
           $luarocks_cmd list --porcelain
         echo "::endgroup::"
 
-    - name: "Setup Lua: Verify PATH"
+        if [[ "${{ runner.os }}" == "Windows" ]]; then
+          echo "::group::Setup Lua: Copy dependencies"
+            # this is required if Lua shall be used outside of the MingW context
+            find $LUA_HOME/lib -type f -name *.dll -print0 | xargs -0 ldd | grep '=>' | cut -f3 -d" " | sort -u | grep -E ".*/bin(/.*)?/lib[^/]+.dll" | while read -r dep; do
+              cp -fv "$dep" "$LUA_HOME/bin" || true
+            done
+          echo "::endgroup::"
+        fi
+
+        echo "::group::Setup Lua: Show architecture of binary files"
+          find $LUA_HOME/{bin,lib} -type f -executable -print0 | xargs -0 file || true
+        echo "::endgroup::"
+
+        echo "::group::Setup Lua: Show dependencies of binary files"
+          find $LUA_HOME/{bin,lib} -type f -executable -print0 | xargs -0 ldd || true
+        echo "::endgroup::"
+
+        echo "::group::Setup Lua: Show luaopen_ entrypoint of dynamic libaries"
+          find $LUA_HOME/lib \( -name "*.dll" -o -name "*.so" \) -exec sh -c 'echo "{}:"; nm -g {} | grep " T luaopen_" | sed "s/^/  /"' \;
+        echo "::endgroup::"
+
+    - name: "Setup Lua: Verify LUA"
       if: ${{ env.SETUP_LUA != 'false' }}
       shell: bash
-      run: lua -v
+      run: |
+        set -eux
+        lua -v
+        # verify the compiled lua libs are loadable
+        cat <<EOF > /tmp/test.lua
+          local regex = require("rex_pcre")
+          local regex2 = require("rex_pcre2")
+          local socket = require("socket")
+          local http = require("socket.http")
+          local url = require("socket.url")
+          local ssl = require("ssl") -- luasec
+          local https = require("ssl.https")
+          local utf8 = require("lua-utf8")
+          local luv = require("luv")
+          --local json = require("hxsimdjson")
+        EOF
+        if ! lua /tmp/test.lua; then
+          find $HOME/lua/lib -name "*.dll" -exec sh -c 'echo "{}:"; nm -g {} | grep " T luaopen_" | sed "s/^/  /"' \;
+          exit 1
+        fi
