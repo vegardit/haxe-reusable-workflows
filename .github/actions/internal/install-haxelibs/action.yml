@@ -20,7 +20,7 @@ runs:
     ##################################################
     - name: "Haxe Libs Cache: Restore"
       id: HAXE-LIBS-CACHE-RESTORE
-      uses: actions/cache/restore@v3 # https://github.com/actions/cache/tree/main/restore
+      uses: actions/cache/restore@v4 # https://github.com/actions/cache/tree/main/restore
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
@@ -187,7 +187,7 @@ runs:
         echo "::endgroup::"
 
     - name: "Haxe Libs Cache: Update"
-      uses: actions/cache/save@v3
+      uses: actions/cache/save@v4
       if: steps.HAXE-LIBS-CACHE-UPDATE-PREPARE.outputs.need_cache_update == 'true'
       with:
         path: |

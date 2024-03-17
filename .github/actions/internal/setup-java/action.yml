@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Java: Install Binaries"
-      uses: actions/setup-java@v3 # https://github.com/marketplace/actions/setup-java-jdk
+      uses: actions/setup-java@v4 # https://github.com/marketplace/actions/setup-java-jdk
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}

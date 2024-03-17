@@ -56,7 +56,7 @@ runs:
 
     - name: "Setup Haxe: Cache"
       if: inputs.haxe.version != 'nightly'
-      uses: actions/cache@v3 # https://github.com/actions/cache
+      uses: actions/cache@v4 # https://github.com/actions/cache
       with:
         path: ${{ runner.temp }}/haxe/sdk/haxe-${{ inputs.haxe-version }}
         key: ${{ runner.os }}-haxe-${{ inputs.haxe-version }}
