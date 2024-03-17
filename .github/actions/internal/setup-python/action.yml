@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Python: Install Python"
-      uses: actions/setup-python@v4 # https://github.com/actions/setup-python
+      uses: actions/setup-python@v5 # https://github.com/actions/setup-python
       with:
         python-version: ${{inputs.python-version }}
 
