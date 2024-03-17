@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Neko: Cache"
-      uses: actions/cache@v3 # https://github.com/actions/cache
+      uses: actions/cache@v4 # https://github.com/actions/cache
       with:
         path: ${{ runner.temp }}/haxe/targets/neko-${{ inputs.neko-version }}
         key: ${{ runner.os }}-neko-${{ inputs.neko-version }}

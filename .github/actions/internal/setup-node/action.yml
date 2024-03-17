@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Node: Install Binaries"
-      uses: actions/setup-node@v3 # https://github.com/marketplace/actions/setup-node-js-environment
+      uses: actions/setup-node@v4 # https://github.com/marketplace/actions/setup-node-js-environment
       with:
         node-version: ${{ inputs.node-version }}
 
