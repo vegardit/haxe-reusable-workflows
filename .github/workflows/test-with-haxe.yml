@@ -342,8 +342,8 @@ jobs:
         set -eu
         rm -rf ${{ inputs.output-dir }}/*
 
-        # Haxe 3.x
-        if [[ "${{ inputs.haxe-version }}" == 3.* ]]; then
+        # Haxe 3.x or Haxe 4.0.x
+        if [[ "${{ inputs.haxe-version }}" == 3.* || "${{ inputs.haxe-version }}" == 4.0.* ]]; then
           (set -x; haxe $TEST_JVM_ARGS -D jvm -java ${{ inputs.output-dir }})
 
           max_attempts=$((1 + $TEST_JVM_RETRIES))
@@ -355,7 +355,7 @@ jobs:
             else sleep 5; fi
           done
 
-        # Haxe 4+
+        # Haxe 4.1+
         else
           (set -x; haxe $TEST_JVM_ARGS --jvm "${{ inputs.output-dir }}/tests.jar")
 
