@@ -25,7 +25,8 @@ inputs:
   test-php:    { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
   test-python: { default: "false", description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
 
-  retries: { default: "0", description: "Number of test retries in case of failures" }
+  allow-failure: { default: "false", description: "true or false. Controls if test failures shall not fail the build" }
+  retries:       { default: "0",     description: "Number of test retries in case of failures" }
 
   debug-with-ssh:                    { default: "never", description: "Start an SSH session for debugging purposes after tests ran: never, always, on_failure, on_failure_or_cancelled" }
   debug-with-ssh-only-for-actor:     { default: "true",  description: "Limit access to the SSH session to the GitHub user that triggered the job" }
@@ -74,7 +75,7 @@ runs:
 
         for target in CPP CS EVAL FLASH HL JAVA JVM LUA NEKO NODE PHP PYTHON; do
           target_args="${{ inputs.haxe-args }}"
-          target_allow_failure="false"
+          target_allow_failure="${{ inputs.allow-failure }}"
           target_retries="${{ inputs.retries }}"
           target_timeout="${{ inputs.test-timeout-minutes }}"
 
@@ -84,7 +85,7 @@ runs:
             false|true) test_target=$target_config ;;
             *:*) # fancy YAML parsing
                test_target=$(         yq '.enabled       != false' <<< "$target_config")
-               target_allow_failure=$(yq '.allow-failure == true'  <<< "$target_config")
+               target_allow_failure=$(yq ".allow-failure == true or $target_allow_failure" <<< "$target_config")
                target_args=$(         yq ".haxe-args       // \"$target_args\"   " <<< "$target_config")
                target_retries=$(      yq ".retries         // \"$target_retries\"" <<< "$target_config")
                target_timeout=$(      yq ".timeout-minutes // \"$target_timeout\"" <<< "$target_config")

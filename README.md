@@ -120,6 +120,7 @@ jobs:
         - 3.4.7
     with:
       runner-os: ${{ matrix.os }}
+      allow-failure: ${{ matrix.haxe == 'nightly' }} # ignore test failures with Haxe nightly
       haxe-version: ${{ matrix.haxe }}
       haxe-args: myconfig.hxml # default is "tests.hxml"
       haxe-libs: | # haxe libraries to be installed:
@@ -278,6 +279,7 @@ jobs:
     - name: Test with Haxe
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
       with:
+        allow-failure: ${{ matrix.haxe == 'nightly' }} # ignore test failures with Haxe nightly
         haxe-version: ${{ matrix.haxe }}
         haxe-args: myconfig.hxml # default is "tests.hxml"
         haxe-libs: | # haxe libraries to be installed:

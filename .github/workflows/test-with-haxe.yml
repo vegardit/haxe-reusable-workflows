@@ -27,8 +27,9 @@ on:
       test-php:    { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
       test-python: { default: "false", type: string, description: "To enable specify 'true', Haxe compiler arguments, or a YAML config" }
 
-      retries:              { default:  0, type: number, description: "Number of test retries in case of failures" }
-      test-timeout-minutes: { default: 10, type: number, description: "The maximum number of minutes a test can run before it is terminated." }
+      allow-failure:        { default: false, type: boolean, description: "true or false. Controls if test failures shall not fail the build" }
+      retries:              { default:  0,    type: number,  description: "Number of test retries in case of failures" }
+      test-timeout-minutes: { default: 10,    type: number,  description: "The maximum number of minutes a test can run before it is terminated" }
 
       job-timeout-minutes:  { default: 60, type: number, description: "The maximum number of minutes the build job shall run." }
 
@@ -87,7 +88,7 @@ jobs:
 
         for target in CPP CS EVAL FLASH HL JAVA JVM LUA NEKO NODE PHP PYTHON; do
           target_args="${{ inputs.haxe-args }}"
-          target_allow_failure="false"
+          target_allow_failure="${{ inputs.allow-failure }}"
           target_retries="${{ inputs.retries }}"
           target_timeout="${{ inputs.test-timeout-minutes }}"
 
@@ -97,7 +98,7 @@ jobs:
             false|true) test_target=$target_config ;;
             *:*) # fancy YAML parsing
                test_target=$(         yq '.enabled       != false' <<< "$target_config")
-               target_allow_failure=$(yq '.allow-failure == true'  <<< "$target_config")
+               target_allow_failure=$(yq ".allow-failure == true or $target_allow_failure" <<< "$target_config")
                target_args=$(         yq ".haxe-args       // \"$target_args\"   " <<< "$target_config")
                target_retries=$(      yq ".retries         // \"$target_retries\"" <<< "$target_config")
                target_timeout=$(      yq ".timeout-minutes // \"$target_timeout\"" <<< "$target_config")
