@@ -54,10 +54,15 @@ runs:
           macOS)
             if [[ ! -f "$NEKO_HOME/neko" ]]; then
               rm -rf "$NEKO_HOME"
+              case "$(machine)" in
+                *arm*) archive_suffix=osx-universal ;;
+                    *) archive_suffix=osx64 ;;
+              esac
+
               if [[ $NEKO_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-osx64.tar.gz" | head -n 1)
+                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-${archive_suffix}.tar.gz" | head -n 1)
               else
-                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-osx64.tar.gz"
+                archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-${archive_suffix}.tar.gz"
               fi
               mkdir -p "$NEKO_HOME"
               $(set -x; curl -sSfL $archive_url | tar -xz --strip-components=1 -C "$NEKO_HOME")

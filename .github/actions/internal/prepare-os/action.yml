@@ -35,7 +35,7 @@ runs:
 
         # workaround to prevent "Error: The `brew link` step did not complete successfully" during "brew install mono"
         # and setup-python action, see https://github.com/actions/setup-python/issues/577
-        rm -f \
+        sudo rm -f \
           /usr/local/share/man/man1/* \
           /usr/local/share/man/man5/* \
           /usr/local/bin/idle3* \

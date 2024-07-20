@@ -158,7 +158,12 @@ runs:
             echo "::group::Setup Lua: Install hererocks dependencies"
               case "${{ runner.os }}" in
                 Linux) sudo apt-get install -y --no-install-recommends build-essential libpcre2-dev libssl-dev libreadline-dev cmake unzip ;;
-                macOS) brew install pcre openssl@1.1; lualib_install_opts+=" OPENSSL_DIR=/usr/local/opt/openssl@1.1" ;;
+                macOS) 
+                  brew install pcre pcre2 openssl@1.1
+                  lualib_install_opts+=" OPENSSL_DIR=$(brew --prefix openssl@1.1)"
+                  lualib_install_opts+=" PCRE_DIR=$(brew --prefix pcre)"
+                  lualib_install_opts+=" PCRE2_DIR=$(brew --prefix pcre2)"
+                  ;;
               esac
             echo "::endgroup::"
  

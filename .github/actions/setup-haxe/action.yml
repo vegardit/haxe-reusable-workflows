@@ -112,8 +112,11 @@ runs:
             echo "$HAXE_HOME" >> "$GITHUB_PATH"
             echo "HAXEPATH=$HAXE_HOME" | tee -a "$GITHUB_ENV"
             echo "HAXE_STD_PATH=$HAXE_HOME/std" | tee -a "$GITHUB_ENV"
-            
-            ln -sfv "$(dirname $(which neko))/libneko.2.dylib" "$HAXE_HOME/libneko.2.dylib" # workaround for "dyld: Library not loaded: @rpath/libneko.2.dylib"
+
+            # workaround for "dyld: Library not loaded: @rpath/libneko.2.dylib"
+            (set -x; ln -sfv "$(dirname $(which neko))/libneko.2.dylib" "$HAXE_HOME/libneko.2.dylib")
+            (set -x; sudo mkdir -p /usr/local/lib; sudo ln -sfv "$(dirname $(which neko))/libneko.2.dylib" /usr/local/lib/libneko.2.dylib)
+
             (set -x; haxelib setup $HAXE_HOME/lib)
             ;;
           Windows)
@@ -138,7 +141,7 @@ runs:
             echo "$(cygpath -w "$HAXE_HOME")" >> "$GITHUB_PATH"
             echo "HAXEPATH=$(cygpath -w "$HAXE_HOME")" | tee -a "$GITHUB_ENV"
             echo "HAXE_STD_PATH=$(cygpath -w "$HAXE_HOME/std")" | tee -a "$GITHUB_ENV"
-            
+
             (set -x; haxelib setup "$(cygpath "$HAXE_HOME")\\lib")
             ;;
         esac
@@ -148,7 +151,6 @@ runs:
     - name: "Setup Haxe: Verify PATH"
       shell: bash
       run: haxe -version # haxe 3 only supports -version. haxe 4 also --version
-
 
     - name: "Install: yq" # https://github.com/mikefarah/yq
       uses: vegardit/gha-setup-yq@v1

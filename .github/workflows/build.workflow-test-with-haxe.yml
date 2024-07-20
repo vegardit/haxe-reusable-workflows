@@ -41,15 +41,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: 
+        os: # https://github.com/actions/runner-images#available-images
         - ubuntu-latest
-        - macos-latest
+        - macos-13 # Intel
         - windows-latest
         haxe:
         - nightly
-        - 4.3.4
+        - 4.3.5
         - 4.2.5
         - 3.4.7
+        include:
+        - os: macos-latest # ARM
+          haxe: nightly
+        - os: macos-latest # ARM
+          haxe: 4.3.5
     with:
       haxe-reusable-workflows-repo:    ${{ github.repository }}
       haxe-reusable-workflows-version: ${{ github.ref }}
