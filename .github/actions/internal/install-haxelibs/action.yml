@@ -73,7 +73,15 @@ runs:
         esac
         echo "HAXELIB_PATH=$HAXELIB_PATH" | tee -a "$GITHUB_ENV"
 
-        haxelib config
+        haxelib_version=$(haxelib version)
+        echo "haxelib version: $haxelib_version"
+        if [[ $haxelib_version == "4.0.2" ]]; then
+          # workaround for "Uncaught exception - Failed with error: Eof" which happens with newer Neko 2.4+
+          (set -x; curl -sSfL --connect-timeout 10 --retry 3 "https://lib.haxe.org/p/haxelib/4.1.0/download/" -o haxelib.zip)
+          (set -x; haxelib --always --global install haxelib.zip)
+          rm haxelib.zip
+        fi
+        (set -x; haxelib config)
 
         haxelibs='${{ inputs.haxe-libs }}'
         if [[ ${TEST_CPP:-} == "true" ]]; then
