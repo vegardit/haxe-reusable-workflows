@@ -25,7 +25,7 @@ runs:
         path: |
           ${{ runner.tool_cache }}/haxe/lib
         # repo layout between haxe3 and 4 changed (and may change again) so we cache based on haxe version
-        key: ${{ runner.os }}-haxelibs-${{ inputs.haxe-version }}
+        key: ${{ runner.os }}-${{ runner.arch }}-haxelibs-${{ inputs.haxe-version }}
 
     - name: "Haxe Libs Cache: Init Root Path"
       id: HAXE-TARGETS-CACHE

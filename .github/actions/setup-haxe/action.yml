@@ -59,7 +59,7 @@ runs:
       uses: actions/cache@v4 # https://github.com/actions/cache
       with:
         path: ${{ runner.temp }}/haxe/sdk/haxe-${{ inputs.haxe-version }}
-        key: ${{ runner.os }}-haxe-${{ inputs.haxe-version }}
+        key: ${{ runner.os }}-${{ runner.arch }}-haxe-${{ inputs.haxe-version }}
 
     - name: "Setup Haxe: Install Binaries"
       shell: bash
