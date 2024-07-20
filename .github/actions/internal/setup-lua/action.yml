@@ -126,13 +126,13 @@ runs:
             }
 
             echo "::group::Setup Lua: Install mingw/pcre"
-                # for Haxe < 4.3
-                install_mingw_package "pcre" "8.45-1"
-                lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
+              # for Haxe < 4.3
+              install_mingw_package "pcre" "8.45-1"
+              lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
 
-                # for Haxe >= 4.3
-                install_mingw_package "pcre2" "10.43-2"
-                lualib_install_opts+=" PCRE2_INCDIR=$(cygpath -wsa /include) PCRE2_LIBDIR=$(cygpath -wsa /lib)"
+              # for Haxe >= 4.3
+              install_mingw_package "pcre2" "10.44-1"
+              lualib_install_opts+=" PCRE2_INCDIR=$(cygpath -wsa /include) PCRE2_LIBDIR=$(cygpath -wsa /lib)"
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Install mingw/openssl"
@@ -148,9 +148,8 @@ runs:
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Patch luarocks/environ" # for Haxe 3
-              # https://github.com/moteus/lua-environ/issues/1
-              curl -sSfL https://raw.githubusercontent.com/moteus/lua-environ/master/rockspecs/environ-0.1.0-1.rockspec | grep -v 'libraries = {"user32"},' > $CACHE_FOLDER/environ-0.1.0-1.rockspec
-              lualibs+=" $(cygpath -wa "$CACHE_FOLDER/environ-0.1.0-1.rockspec")"
+              curl -sSfL https://raw.githubusercontent.com/sebthom/hx-lua-environ/master/rockspecs/environ-scm-0.rockspec -o $CACHE_FOLDER/environ-scm-0.rockspec
+              lualibs+=" $(cygpath -wa "$CACHE_FOLDER/environ-scm-0.rockspec")"
               #lualibs+=" environ@0.1.0-1"
             echo "::endgroup::"
             ;;
