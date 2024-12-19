@@ -48,7 +48,7 @@ jobs:
     uses: vegardit/haxe-reusable-workflows/.github/workflows/test-with-haxe.yml@v1
     with:
       runner-os: ubuntu-latest
-      haxe-version: 4.2.5
+      haxe-version: 4.3.6
       haxe-args: myconfig.hxml # default is "tests.hxml"
       haxe-libs: hx3compat hscript # haxe libraries to be installed
 
@@ -116,7 +116,7 @@ jobs:
         haxe:
         - nightly # latest development build
         - latest  # latest stable release
-        - 4.2.5
+        - 4.3.6
         - 3.4.7
     with:
       runner-os: ${{ matrix.os }}
@@ -201,7 +201,7 @@ jobs:
     - name: Test with Haxe
       uses: vegardit/haxe-reusable-workflows/.github/actions/test-with-haxe@v1
       with:
-        haxe-version: 4.2.5
+        haxe-version: 4.3.6
         haxe-args: myconfig.hxml # default is "tests.hxml"
         haxe-libs: hx3compat hscript # libraries to be installed
 
@@ -269,7 +269,7 @@ jobs:
         haxe:
         - nightly # latest development build
         - latest  # latest stable release
-        - 4.2.5
+        - 4.3.6
         - 3.4.7
 
     steps:
@@ -349,7 +349,7 @@ jobs:
         haxe:
         - nightly # latest development build
         - latest  # latest stable release
-        - 4.2.5
+        - 4.3.6
         - 3.4.7
 
     steps:
@@ -394,7 +394,7 @@ jobs:
         haxe:
         - nightly # latest development build
         - latest  # latest stable release
-        - 4.2.5
+        - 4.3.6
         - 3.4.7
 
     steps:
