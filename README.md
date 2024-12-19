@@ -3,7 +3,7 @@
 [![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.workflow-test-with-haxe.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.workflow-test-with-haxe.yml)
 [![Build](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.action-test-with-haxe.yml/badge.svg)](https://github.com/vegardit/haxe-reusable-workflows/actions/workflows/build.action-test-with-haxe.yml)
 [![License](https://img.shields.io/github/license/vegardit/haxe-reusable-workflows.svg?label=license)](#license)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg)](CODE_OF_CONDUCT.md)
 
 
 **Feedback and high-quality pull requests are highly welcome!**
