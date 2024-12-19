@@ -137,7 +137,7 @@ runs:
 
             echo "::group::Setup Lua: Install mingw/openssl"
                 # https://github.com/brunoos/luasec/issues/150#issuecomment-1416754488
-                install_mingw_package "openssl" "1.1.1.s-1"
+                install_mingw_package "openssl" "3.4.0-1"
                 lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
             echo "::endgroup::"
 
