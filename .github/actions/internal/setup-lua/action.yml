@@ -195,13 +195,13 @@ runs:
         echo "::endgroup::"
 
         if [[ $LUA_VERSION == 5.1* ]]; then
-          lualibs+=" bit32@5.2.2-1"
+          lualibs+=" bit32@5.3.5.1-1"
         fi
         lualibs+=" lrexlib-pcre@2.9.2-1"  # haxe < 4.3
         lualibs+=" lrexlib-pcre2@2.9.2-1" # haxe >= 4.3
         lualibs+=" luasocket@3.1.0-1"
-        lualibs+=" luautf8@0.1.5-2"
-        lualibs+=" luv@1.44.2-1"
+        lualibs+=" luautf8@0.1.6-1"
+        lualibs+=" luv@1.50.0-1"
         lualibs+=" luasec@1.3.2-1"
 
         for lib in $lualibs; do
