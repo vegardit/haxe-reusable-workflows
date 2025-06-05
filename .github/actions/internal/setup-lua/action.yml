@@ -135,13 +135,13 @@ runs:
               lualib_install_opts+=" PCRE_INCDIR=$(cygpath -wsa /include) PCRE_LIBDIR=$(cygpath -wsa /lib)"
 
               # for Haxe >= 4.3
-              install_mingw_package "pcre2" "10.44-1"
+              install_mingw_package "pcre2" "10.45-1"
               lualib_install_opts+=" PCRE2_INCDIR=$(cygpath -wsa /include) PCRE2_LIBDIR=$(cygpath -wsa /lib)"
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Install mingw/openssl"
                 # https://github.com/brunoos/luasec/issues/150#issuecomment-1416754488
-                install_mingw_package "openssl" "3.4.0-1"
+                install_mingw_package "openssl" "3.5.0-1"
                 lualib_install_opts+=" OPENSSL_INCDIR=$(cygpath -wsa /include) OPENSSL_LIBDIR=$(cygpath -wsa /lib)"
             echo "::endgroup::"
 
