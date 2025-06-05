@@ -7,10 +7,10 @@ name: Setup Haxe Lua Target
 description: Installs and configures the Haxe compiler target Lua
 
 inputs:
-  lua-version: 
+  lua-version:
     default: "5.3.6"
     description: "Lua version"
-  luarocks-version: 
+  luarocks-version:
     default: "3.11.0"
     description: "Luarocks version"
   cache-folder:
@@ -31,7 +31,7 @@ runs:
       shell: cmd
       run: |
         echo C:\msys64\usr\bin>>%GITHUB_PATH%
-        
+
     - name: "Setup Lua: Install Binaries"
       env:
         CACHE_FOLDER: ${{ inputs.cache-folder }}
@@ -162,7 +162,7 @@ runs:
                   # libpcre2-dev = PCRE2 Development Headers
                   sudo apt-get install -y --no-install-recommends build-essential libpcre2-dev libpcre3-dev libssl-dev libreadline-dev cmake unzip
                   ;;
-                macOS) 
+                macOS)
                   brew install pcre pcre2 openssl@1.1
                   lualib_install_opts+=" OPENSSL_DIR=$(brew --prefix openssl@1.1)"
                   lualib_install_opts+=" PCRE_DIR=$(brew --prefix pcre)"
@@ -170,7 +170,7 @@ runs:
                   ;;
               esac
             echo "::endgroup::"
- 
+
             echo "::group::Setup Lua: Install Lua and Luarocks"
               luarocks_cmd="luarocks"
               mkdir -p $CACHE_FOLDER
@@ -210,7 +210,7 @@ runs:
             lib_ver="${lib#*@}"
             if $luarocks_cmd list --porcelain | grep -E "^$lib_name\s$lib_ver\s"; then
                echo "Nothing to do. Lua module [$lib] is already installed."
-            else 
+            else
                $luarocks_cmd install $lib_name $lib_ver ${lualib_install_opts:-}
             fi
           echo "::endgroup::"
