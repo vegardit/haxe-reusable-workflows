@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Install Haxelibs
 description: Installs Haxe Libraries
 
@@ -20,7 +20,7 @@ runs:
     ##################################################
     - name: "Haxe Libs Cache: Restore"
       id: HAXE-LIBS-CACHE-RESTORE
-      uses: actions/cache/restore@v4 # https://github.com/actions/cache/tree/main/restore
+      uses: actions/cache/restore@v4  # https://github.com/actions/cache/tree/main/restore
       with:
         path: |
           ${{ runner.tool_cache }}/haxe/lib

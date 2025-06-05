@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Setup Haxe PHP Target
 description: Installs and configures the Haxe compiler target PHP
 
@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup PHP: Install Binaries"
-      uses: shivammathur/setup-php@v2 # https://github.com/marketplace/actions/setup-php-action
+      uses: shivammathur/setup-php@v2  # https://github.com/marketplace/actions/setup-php-action
       env:
         runner: ${{ env.ACT && 'self-hosted' || 'github' }}
       with:

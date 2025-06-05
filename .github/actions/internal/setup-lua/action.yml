@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Setup Haxe Lua Target
 description: Installs and configures the Haxe compiler target Lua
 
@@ -21,12 +21,12 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Lua: Cache"
-      uses: actions/cache@v4 # https://github.com/actions/cache
+      uses: actions/cache@v4  # https://github.com/actions/cache
       with:
         path: ${{ inputs.cache-folder }}
         key: ${{ runner.os }}-${{ runner.arch }}-lua-${{ inputs.lua-version }}
 
-    - name: "Enable MSYS2 bash" # https://github.com/actions/runner/issues/497
+    - name: "Enable MSYS2 bash"  # https://github.com/actions/runner/issues/497
       if: ${{ runner.os == 'Windows' }}
       shell: cmd
       run: |
@@ -43,7 +43,7 @@ runs:
         HOMEBREW_NO_INSTALL_CLEANUP: "1"
         HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
         GIT_CONFIG_COUNT: "1"
-        GIT_CONFIG_KEY_0: "advice.detachedHead" # suppress "You are in 'detached HEAD' state. You can look around, make experimental"
+        GIT_CONFIG_KEY_0: "advice.detachedHead"  # suppress "You are in 'detached HEAD' state. You can look around, make experimental"
         GIT_CONFIG_VALUE_0: "false"
       shell: bash
       run: |

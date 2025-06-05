@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Setup Haxe Neko Target
 description: Installs and configures the Haxe compiler target Neko
 
@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Neko: Cache"
-      uses: actions/cache@v4 # https://github.com/actions/cache
+      uses: actions/cache@v4  # https://github.com/actions/cache
       with:
         path: ${{ runner.temp }}/haxe/targets/neko-${{ inputs.neko-version }}
         key: ${{ runner.os }}-${{ runner.arch }}-neko-${{ inputs.neko-version }}

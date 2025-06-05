@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Test with Haxe
 description: Sets up Haxe, the required compiler targets and runs tests
 inputs:
@@ -41,7 +41,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: "Install: yq" # https://github.com/mikefarah/yq
+    - name: "Install: yq"  # https://github.com/mikefarah/yq
       uses: vegardit/gha-setup-yq@v1
 
     - name: Process input parameter
@@ -569,7 +569,7 @@ runs:
         fi
 
     - name: "SSH session for debugging: start"
-      uses: mxschmitt/action-tmate@v3 # https://github.com/mxschmitt/action-tmate
+      uses: mxschmitt/action-tmate@v3  # https://github.com/mxschmitt/action-tmate
       if: always() && steps.DEBUG_SSH_SESSSION_CHECK.outputs.start_session
       with:
         limit-access-to-actor: ${{ inputs.debug-with-ssh-only-for-actor }}

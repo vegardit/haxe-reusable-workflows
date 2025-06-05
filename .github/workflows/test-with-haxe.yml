@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Test with Haxe
 on:
   workflow_call:
@@ -56,7 +56,7 @@ jobs:
     timeout-minutes: ${{ inputs.job-timeout-minutes }}
 
     steps:
-    - name: "Install: yq" # https://github.com/mikefarah/yq
+    - name: "Install: yq"  # https://github.com/mikefarah/yq
       uses: vegardit/gha-setup-yq@v1
 
     - name: Process input parameter

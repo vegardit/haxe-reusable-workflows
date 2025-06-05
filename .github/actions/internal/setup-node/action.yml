@@ -2,7 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/creating-actions/creating-a-composite-action
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 name: Setup Haxe Node Target
 description: Installs and configures the Haxe compiler target Node
 
@@ -15,7 +15,7 @@ runs:
   using: "composite"
   steps:
     - name: "Setup Node: Install Binaries"
-      uses: actions/setup-node@v4 # https://github.com/marketplace/actions/setup-node-js-environment
+      uses: actions/setup-node@v4  # https://github.com/marketplace/actions/setup-node-js-environment
       with:
         node-version: ${{ inputs.node-version }}
 
