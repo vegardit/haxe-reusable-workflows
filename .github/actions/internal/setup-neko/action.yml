@@ -30,7 +30,7 @@ runs:
         set -euo pipefail
 
         if [[ -n "${{ github.token }}" ]]; then
-          auth_header='-H "Authorization: token ${{ github.token }}"'
+          auth_header=( -H "Authorization: Bearer ${{ github.token }}" )
         fi
 
         case "${{ runner.os }}" in
@@ -38,7 +38,7 @@ runs:
             if [[ ! -f "$NEKO_HOME/neko" ]]; then
               rm -rf "$NEKO_HOME"
               if [[ $NEKO_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-linux64.tar.gz" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-linux64.tar.gz" | head -n 1)
               else
                 archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-linux64.tar.gz"
               fi
@@ -60,7 +60,7 @@ runs:
               esac
 
               if [[ $NEKO_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-${archive_suffix}.tar.gz" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-${archive_suffix}.tar.gz" | head -n 1)
               else
                 archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-${archive_suffix}.tar.gz"
               fi
@@ -75,7 +75,7 @@ runs:
             if [[ ! -f "$NEKO_HOME/neko.exe" ]]; then
               rm -rf "$NEKO_HOME"
               if [[ $NEKO_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-win64.zip" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/neko/releases | grep -o "https://.*/download/.*/neko.*-win64.zip" | head -n 1)
               elif [[ ${NEKO_VERSION//./} -lt 220 ]]; then
                 archive_url="https://github.com/HaxeFoundation/neko/releases/download/v${NEKO_VERSION//./-}/neko-${NEKO_VERSION}-win.zip"
               else

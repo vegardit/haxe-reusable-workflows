@@ -53,8 +53,12 @@ runs:
         lualibs=
         lualib_install_opts=
 
+        if [[ -n "${{ github.token }}" ]]; then
+          auth_header=( -H "Authorization: Bearer ${{ github.token }}" )
+        fi
+
         echo "::group::Setup Lua: Install hererocks"
-          curl -sSfL https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py -o /tmp/hererocks.py
+          curl -fsSL "${auth_header[@]:-}" https://raw.githubusercontent.com/luarocks/hererocks/master/hererocks.py -o /tmp/hererocks.py
         echo "::endgroup::"
 
         case "${{ runner.os }}" in
@@ -142,13 +146,13 @@ runs:
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Prepare hx-lua-simdjson"
-              curl -sSfL https://raw.githubusercontent.com/sebthom/hx-lua-simdjson/master/hx-lua-simdjson-scm-0.rockspec -o $CACHE_FOLDER/hx-lua-simdjson-scm-0.rockspec
+              curl -fsSL "${auth_header[@]:-}" https://raw.githubusercontent.com/sebthom/hx-lua-simdjson/master/hx-lua-simdjson-scm-0.rockspec -o $CACHE_FOLDER/hx-lua-simdjson-scm-0.rockspec
               lualibs+=" $(cygpath -wa "$CACHE_FOLDER/hx-lua-simdjson-scm-0.rockspec")"
               #lualibs+=" hx-lua-simdjson@0.0.1-1"
             echo "::endgroup::"
 
             echo "::group::Setup Lua: Patch luarocks/environ" # for Haxe 3
-              curl -sSfL https://raw.githubusercontent.com/sebthom/hx-lua-environ/master/rockspecs/environ-scm-0.rockspec -o $CACHE_FOLDER/environ-scm-0.rockspec
+              curl -fsSL "${auth_header[@]:-}" https://raw.githubusercontent.com/sebthom/hx-lua-environ/master/rockspecs/environ-scm-0.rockspec -o $CACHE_FOLDER/environ-scm-0.rockspec
               lualibs+=" $(cygpath -wa "$CACHE_FOLDER/environ-scm-0.rockspec")"
               #lualibs+=" environ@0.1.0-1"
             echo "::endgroup::"

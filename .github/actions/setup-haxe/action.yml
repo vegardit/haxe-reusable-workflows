@@ -71,7 +71,7 @@ runs:
         set -euo pipefail
 
         if [[ -n "${{ github.token }}" ]]; then
-          auth_header='-H "Authorization: token ${{ github.token }}"'
+          auth_header=( -H "Authorization: Bearer ${{ github.token }}" )
         fi
 
         export PATH="$HAXE_HOME:$PATH"
@@ -81,7 +81,7 @@ runs:
             if [[ ! -f "$HAXE_HOME/haxe" ]]; then
               rm -rf "$HAXE_HOME"
               if [[ $HAXE_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-linux64.tar.gz" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-linux64.tar.gz" | head -n 1)
               elif [[ $HAXE_VERSION == 'nightly' ]]; then
                 archive_url="https://build.haxe.org/builds/haxe/linux64/haxe_latest.tar.gz"
               else
@@ -100,7 +100,7 @@ runs:
             if [[ ! -f "$HAXE_HOME/haxe" ]]; then
               rm -rf "$HAXE_HOME"
               if [[ $HAXE_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-osx.tar.gz" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-osx.tar.gz" | head -n 1)
               elif [[ $HAXE_VERSION == 'nightly' ]]; then
                 archive_url="https://build.haxe.org/builds/haxe/mac/haxe_latest.tar.gz"
               else
@@ -124,7 +124,7 @@ runs:
             if [[ ! -f "$HAXE_HOME/haxe.exe" ]]; then
               rm -rf "$HAXE_HOME"
               if [[ $HAXE_VERSION == 'latest' ]]; then
-                archive_url=$(eval curl -sSfL ${auth_header:-} https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-win64.zip" | head -n 1)
+                archive_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/haxe/releases | grep -o "https://.*/download/.*/haxe.*-win64.zip" | head -n 1)
               elif [[ $HAXE_VERSION == 'nightly' ]]; then
                 archive_url="https://build.haxe.org/builds/haxe/windows64/haxe_latest.zip"
               elif [[ $HAXE_VERSION == 3.* ]]; then  
