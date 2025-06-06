@@ -570,16 +570,18 @@ jobs:
         job_info=$(echo "$GITHUB_JOB ${{ runner.os }} haxe-${{ inputs.haxe-version }}" | tr -d '\n')
         echo "job_info: $job_info"
 
-        if [[ "$job_info" =~ .*$job_filter_pattern.* ]] && case "${{ job.status }}" in
-           success)   [[ "${{ inputs.debug-with-ssh }}" == always ]] ;;
-           cancelled) [[ "${{ inputs.debug-with-ssh }}" == on_failure_or_cancelled ]] ;;
-           failure)   [[ "${{ inputs.debug-with-ssh }}" =~ on_failure.* ]] ;;
-        esac; then
-           echo "start_session=true" | tee -a "$GITHUB_OUTPUT"
+        when="${{ inputs.debug-with-ssh }}"
+
+        if [[ $when == "always" ]] || { [[ "$job_info" =~ .*$job_filter_pattern.* ]] && case "${{ job.status }}" in
+          success)   [[ $when == "always" ]] ;;
+          cancelled) [[ $when == "on_failure_or_cancelled" ]] ;;
+          failure)   [[ $when == "on_failure"* ]] ;;
+        esac }; then
+          echo "start_ssh_session=true" | tee -a "$GITHUB_OUTPUT"
         fi
 
     - name: "SSH session for debugging: start"
-      uses: mxschmitt/action-tmate@v3 # https://github.com/mxschmitt/action-tmate
-      if: always() && steps.DEBUG_SSH_SESSSION_CHECK.outputs.start_session
+      uses: mxschmitt/action-tmate@v3  # https://github.com/mxschmitt/action-tmate
+      if: always() && steps.DEBUG_SSH_SESSSION_CHECK.outputs.start_ssh_session
       with:
         limit-access-to-actor: ${{ inputs.debug-with-ssh-only-for-actor }}

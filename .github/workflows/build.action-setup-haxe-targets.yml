@@ -55,9 +55,9 @@ jobs:
       run: env | sort
 
     - name: Git Checkout
-      uses: actions/checkout@v4 #https://github.com/actions/checkout
+      uses: actions/checkout@v4  # https://github.com/actions/checkout
 
-    - name: "Install: Haxe compiler targets"
+    - name: "Install: Haxe compiler targets (default versions)"
       uses: ./.github/actions/setup-haxe-targets
       with:
         haxe-reusable-workflows-repo:    ${{ github.repository }}
@@ -66,8 +66,54 @@ jobs:
         setup-cs:     true
         setup-flash:  true
         setup-hl:     true
+        setup-java:   true
+        setup-lua:    true
+        setup-node:   true
+        setup-php:    true
+        setup-python: true
+
+    - name: "Install: Haxe compiler targets (specific versions)"
+      uses: ./.github/actions/setup-haxe-targets
+      with:
+        haxe-reusable-workflows-repo:    ${{ github.repository }}
+        haxe-reusable-workflows-version: ${{ github.ref }}
+
+        setup-cs:     '6.10'
+        setup-flash:  false
+        setup-hl:     false
         setup-java:   17
-        setup-lua:    5.3.5
-        setup-node:   18
-        setup-php:    8.0  # or PHP version, e.g. "7.4"
-        setup-python: '3.10'
+        setup-lua:    5.2.4
+        setup-node:   20
+        setup-php:    8.2
+        setup-python: 3.11
+
+
+    ##################################################
+    # Setup SSH debug session
+    ##################################################
+    - name: "SSH session for debugging: check"
+      id: DEBUG_SSH_SESSSION_CHECK
+      if: always()
+      run: |
+        set -eu
+        job_filter_pattern="${{ inputs.debug-with-ssh-only-jobs-matching }}"
+        echo "job_filter: $job_filter_pattern"
+
+        job_info=$(echo "$GITHUB_JOB ${{ toJSON(matrix) }}" | tr -d '\n')
+        echo "job_info: $job_info"
+
+        when="${{ inputs.debug-with-ssh }}"
+
+        if [[ $when == "always" ]] || { [[ "$job_info" =~ .*$job_filter_pattern.* ]] && case "${{ job.status }}" in
+          success)   [[ $when == "always" ]] ;;
+          cancelled) [[ $when == "on_failure_or_cancelled" ]] ;;
+          failure)   [[ $when == "on_failure"* ]] ;;
+        esac }; then
+          echo "start_ssh_session=true" | tee -a "$GITHUB_OUTPUT"
+        fi
+
+    - name: "SSH session for debugging: start"
+      uses: mxschmitt/action-tmate@v3  # https://github.com/mxschmitt/action-tmate
+      if: always() && steps.DEBUG_SSH_SESSSION_CHECK.outputs.start_ssh_session
+      with:
+        limit-access-to-actor: ${{ inputs.debug-with-ssh-only-for-actor }}

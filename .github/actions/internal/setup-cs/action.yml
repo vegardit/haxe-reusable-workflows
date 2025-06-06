@@ -42,13 +42,42 @@ runs:
         if [[ $installed_mono_version != "$MONO_VERSION"* ]]; then
           case "${{ runner.os }}" in
             Linux)
-              sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+              # -- Cleanup previously installed mono version -----------------------------
+              sudo rm -f /etc/apt/sources.list.d/mono-*
+              sudo apt-get remove -y 'mono-*' 'libmono*' ca-certificates-mono || true
+              sudo apt-get update
+              sudo apt-get autoremove
+              sudo apt-get update -qq
+
+              # -- Import repo key -------------------------------------------------------
+              sudo apt-get -y --no-install-recommends install ca-certificates gnupg
+              sudo gpg --homedir /tmp --no-default-keyring \
+                --keyring /usr/share/keyrings/mono-official-archive-keyring.gpg \
+                --keyserver hkp://keyserver.ubuntu.com:80 \
+                --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+
+              # -- Decide which Ubuntu codename Mono actually ships for ------------------
               os_release=$(lsb_release -cs)
               # https://www.mono-project.com/download/stable/#download-lin-ubuntu
               if [[ $os_release == "jammy" || $os_release == "noble" ]]; then os_release=focal; fi
-              sudo apt-add-repository -y "deb https://download.mono-project.com/repo/ubuntu stable-$os_release main"
+
+              # -- Add the regular stable line and refresh -------------------------------
+              echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-$os_release main" \
+                | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+              sudo apt-get update -qq
+
+              # -- If target version is NOT visible, add its snapshot repo ---------------
+              if ! apt-cache madison mono-devel | grep -q "^ *${MONO_VERSION}"; then
+                 major_minor=$(echo "$MONO_VERSION" | cut -d. -f1,2)  # e.g. 6.10
+                 sudo rm -f /etc/apt/sources.list.d/mono-*
+                 echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-$os_release/snapshots/${major_minor} main" \
+                   | sudo tee /etc/apt/sources.list.d/mono-snapshot-${major_minor}.list
+                 sudo apt-get update -qq
+              fi
+
+              # -- Install (exact match) -------------------------------------------------
               apt-cache madison mono-devel
-              sudo apt-get install -y --no-install-recommends "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
+              sudo apt-get install -y --allow-downgrades --no-install-recommends "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
               ;;
             macOS)
               # not possible to easily install specific releases by version number, see https://itnext.io/how-to-install-an-older-brew-package-add141e58d32
