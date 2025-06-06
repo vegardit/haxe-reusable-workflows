@@ -38,6 +38,10 @@ on:
         default: ".*"
         type: string
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   test-with-haxe-workflow-test:
     uses: ./.github/workflows/test-with-haxe.yml

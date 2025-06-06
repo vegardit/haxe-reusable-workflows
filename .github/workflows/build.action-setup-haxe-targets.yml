@@ -38,6 +38,10 @@ on:
         default: ".*"
         type: string
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   setup-haxe-targets-action-test:
     runs-on: ${{ matrix.os }}
