@@ -2,10 +2,13 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
-# https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+# https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 name: Test "test-with-haxe" Action
 
-on:
+on:  # https://docs.github.com/en/actions/reference/events-that-trigger-workflows
+  schedule:
+    # https://docs.github.com/en/actions/reference/choosing-when-your-workflow-runs/events-that-trigger-workflows
+    - cron: '0 10 1 * *'
   push:
     branches:
     - '**'
@@ -19,11 +22,15 @@ on:
     - '.github/workflows/build.action-setup-haxe-targets.yml'
     - '.github/workflows/build.workflow-test-with-haxe.yml'
   pull_request:
-  schedule:
-    # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows
-    - cron: '0 10 1 * *'
+    paths-ignore:
+    - '**/*.adoc'
+    - '**/*.md'
+    - '.github/*.yml'
+    - '.github/workflows/test-with-haxe.yml'
+    - '.github/workflows/build.action-setup-haxe-targets.yml'
+    - '.github/workflows/build.workflow-test-with-haxe.yml'
   workflow_dispatch:
-    # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#workflow_dispatch
+    # https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch
     inputs:
       debug-with-ssh:
         description: "Start an SSH session for debugging purposes after tests ran:"
