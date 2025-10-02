@@ -50,7 +50,13 @@ runs:
               mkdir -p "$hashlink_home"
               if [[ ! -f "$hashlink_home/hl" ]]; then
                 rm -rf "$hashlink_home"
-                latest_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -o "https://.*/download/latest/hashlink-.*-darwin.tar.gz")
+                #if [[ "$(uname -m)" == "arm64" ]]; then
+                #  TODO not yet supported, see https://github.com/HaxeFoundation/hashlink/pull/821#issuecomment-3243138382
+                #  latest_url_pattern="https://.*/download/latest/hashlink-.*-darwin-arm64(-cmake)?\.tar\.gz"
+                #else
+                  latest_url_pattern="https://.*/download/latest/hashlink-.*-darwin(-cmake)?\.tar\.gz"
+                #fi
+                latest_url=$(curl -fsSL "${auth_header[@]:-}" https://api.github.com/repos/HaxeFoundation/hashlink/releases | grep -oE "$latest_url_pattern")
                 mkdir -p "$hashlink_home"
                 curl -sSfL $latest_url | tar -xz --strip-components=1 -C "$hashlink_home"
               fi
