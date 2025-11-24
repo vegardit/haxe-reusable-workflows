@@ -65,7 +65,7 @@ jobs:
       run: env | sort
 
     - name: Git Checkout
-      uses: actions/checkout@v5  # https://github.com/actions/checkout
+      uses: actions/checkout@v6  # https://github.com/actions/checkout
 
     - name: "Install: Haxe compiler targets (default versions)"
       uses: ./.github/actions/setup-haxe-targets
