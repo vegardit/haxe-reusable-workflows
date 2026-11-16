@@ -33,6 +33,7 @@ runs:
         echo C:\msys64\usr\bin>>%GITHUB_PATH%
 
     - name: "Setup Lua: Install Binaries"
+      id: install
       env:
         CACHE_FOLDER: ${{ inputs.cache-folder }}
         LUA_VERSION: ${{ inputs.lua-version }}
@@ -52,6 +53,7 @@ runs:
         LUA_HOME=$HOME/lua
         lualibs=
         lualib_install_opts=
+        with_pcre1=true
 
         if [[ -n "${{ github.token }}" ]]; then
           auth_header=( -H "Authorization: Bearer ${{ github.token }}" )
@@ -163,9 +165,16 @@ runs:
             echo "::group::Setup Lua: Install hererocks dependencies"
               case "${{ runner.os }}" in
                 Linux)
-                  # libpcre3-dev = PCRE1 Development Headers
                   # libpcre2-dev = PCRE2 Development Headers
-                  sudo apt-get install -y --no-install-recommends build-essential libpcre2-dev libpcre3-dev libssl-dev libreadline-dev cmake unzip
+                  # libpcre3-dev = PCRE1 Development Headers (only needed for Haxe < 4.3, no longer shipped by newer Debian/Ubuntu releases)
+                  apt_pkgs="build-essential libpcre2-dev libssl-dev libreadline-dev cmake unzip"
+                  if apt-cache policy libpcre3-dev 2>/dev/null | grep -qE '^\s+Candidate: [^(]'; then
+                    apt_pkgs+=" libpcre3-dev"
+                  else
+                    echo "::warning::Package libpcre3-dev (PCRE1) is not available on this OS. Skipping Lua module lrexlib-pcre (only required for Haxe < 4.3)."
+                    with_pcre1=false
+                  fi
+                  sudo apt-get install -y --no-install-recommends $apt_pkgs
                   ;;
                 macOS)
                   brew install pcre pcre2 openssl@1.1
@@ -202,7 +211,10 @@ runs:
         if [[ $LUA_VERSION == 5.1* ]]; then
           lualibs+=" bit32@5.3.5.1-1"
         fi
-        lualibs+=" lrexlib-pcre@2.9.2-1"  # haxe < 4.3
+        if [[ $with_pcre1 == true ]]; then
+          lualibs+=" lrexlib-pcre@2.9.2-1"  # haxe < 4.3
+        fi
+        echo "with_pcre1=$with_pcre1" >> "$GITHUB_OUTPUT"
         lualibs+=" lrexlib-pcre2@2.9.2-1" # haxe >= 4.3
         lualibs+=" luasocket@3.1.0-1"
         lualibs+=" luautf8@0.1.6-1"
@@ -248,12 +260,18 @@ runs:
 
     - name: "Setup Lua: Verify LUA"
       shell: bash
+      env:
+        WITH_PCRE1: ${{ steps.install.outputs.with_pcre1 }}
       run: |
         set -eux
         lua -v
         # verify the compiled lua libs are loadable
-        cat <<EOF > /tmp/test.lua
-          local regex = require("rex_pcre")
+        if [[ $WITH_PCRE1 == true ]]; then
+          echo 'local regex = require("rex_pcre")' > /tmp/test.lua
+        else
+          : > /tmp/test.lua
+        fi
+        cat <<EOF >> /tmp/test.lua
           local regex2 = require("rex_pcre2")
           local socket = require("socket")
           local http = require("socket.http")
