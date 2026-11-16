@@ -168,7 +168,10 @@ runs:
                   # libpcre2-dev = PCRE2 Development Headers
                   # libpcre3-dev = PCRE1 Development Headers (only needed for Haxe < 4.3, no longer shipped by newer Debian/Ubuntu releases)
                   apt_pkgs="build-essential libpcre2-dev libssl-dev libreadline-dev cmake unzip"
-                  if apt-cache policy libpcre3-dev 2>/dev/null | grep -qE '^\s+Candidate: [^(]'; then
+                  sudo apt-get update -qq
+                  # capture output first: `apt-cache ... | grep -q` fails under pipefail when apt-cache gets SIGPIPE
+                  apt_policy=$(LC_ALL=C apt-cache policy libpcre3-dev 2>/dev/null || true)
+                  if [[ $apt_policy =~ Candidate:\ [^\(] ]]; then
                     apt_pkgs+=" libpcre3-dev"
                   else
                     echo "::warning::Package libpcre3-dev (PCRE1) is not available on this OS. Skipping Lua module lrexlib-pcre (only required for Haxe < 4.3)."

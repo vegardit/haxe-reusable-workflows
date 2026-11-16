@@ -51,15 +51,25 @@ runs:
 
               # -- Import repo key -------------------------------------------------------
               sudo apt-get -y --no-install-recommends install ca-certificates gnupg
+              # APT requires an OpenPGP keyring, not GnuPG's default keybox format.
               sudo gpg --homedir /tmp --no-default-keyring \
-                --keyring /usr/share/keyrings/mono-official-archive-keyring.gpg \
+                --keyring gnupg-ring:/usr/share/keyrings/mono-official-archive-keyring.gpg \
                 --keyserver hkp://keyserver.ubuntu.com:80 \
                 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+              sudo chmod 644 /usr/share/keyrings/mono-official-archive-keyring.gpg
+
+              # Keep Mono versions consistent, but use Ubuntu's native libraries such as libgdiplus.
+              sudo tee /etc/apt/preferences.d/mono-official > /dev/null <<'EOF'
+        Package: mono-* libmono-* ca-certificates-mono
+        Pin: origin download.mono-project.com
+        Pin-Priority: 1001
+        EOF
 
               # -- Decide which Ubuntu codename Mono actually ships for ------------------
               os_release=$(lsb_release -cs)
               # https://www.mono-project.com/download/stable/#download-lin-ubuntu
-              if [[ $os_release == "jammy" || $os_release == "noble" ]]; then os_release=focal; fi
+              # Mono uses its focal repository for newer Ubuntu LTS releases as well.
+              if [[ $os_release == "jammy" || $os_release == "noble" || $os_release == "resolute" ]]; then os_release=focal; fi
 
               # -- Add the regular stable line and refresh -------------------------------
               echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-$os_release main" \
