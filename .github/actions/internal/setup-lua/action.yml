@@ -180,8 +180,8 @@ runs:
                   sudo apt-get install -y --no-install-recommends $apt_pkgs
                   ;;
                 macOS)
-                  brew install pcre pcre2 openssl@1.1
-                  lualib_install_opts+=" OPENSSL_DIR=$(brew --prefix openssl@1.1)"
+                  brew install pcre pcre2 openssl@3
+                  lualib_install_opts+=" OPENSSL_DIR=$(brew --prefix openssl@3)"
                   lualib_install_opts+=" PCRE_DIR=$(brew --prefix pcre)"
                   lualib_install_opts+=" PCRE2_DIR=$(brew --prefix pcre2)"
                   ;;
