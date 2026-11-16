@@ -28,7 +28,7 @@ runs:
         key: ${{ runner.os }}-${{ runner.arch }}-haxelibs-${{ inputs.haxe-version }}
 
     - name: "Haxe Libs Cache: Init Root Path"
-      id: HAXE-TARGETS-CACHE
+      id: HAXE-LIBS-CACHE
       shell: bash
       run: |
         echo "::group::Haxe Libs Cache: Init Root Path"
@@ -160,11 +160,11 @@ runs:
         GH_TOKEN: ${{ github.token }}
       shell: bash
       run: |
-        echo "::group::Haxe Targets Cache: Prepare Update"
+        echo "::group::Haxe Libs Cache: Prepare Update"
           set -euo pipefail
           if [[ '${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-hit }}' == "true" ]]; then
 
-            pushd '${{ steps.haxe-targets.cache.outputs.path_nix }}'
+            pushd '${{ steps.HAXE-LIBS-CACHE.outputs.path_nix }}'
               # create a quick hashsum based on file names and file size
               case '${{ runner.os }}' in
                 macOS) current_hash="$(find . -type f -print0 | xargs -0r stat -f '%N %z' | sort -z | shasum  | cut -d' ' -f1)" ;;
@@ -172,7 +172,7 @@ runs:
               esac
             popd
 
-            if [[ "$current_hash" != '${{ steps.haxe-targets.cache.outputs.initial_hash }}' ]]; then
+            if [[ "$current_hash" != '${{ steps.HAXE-LIBS-CACHE.outputs.initial_hash }}' ]]; then
               echo "Cache update needed, since folder content changed. new hash: $current_hash"
 
               primaryCacheKey='${{ steps.HAXE-LIBS-CACHE-RESTORE.outputs.cache-primary-key }}'
