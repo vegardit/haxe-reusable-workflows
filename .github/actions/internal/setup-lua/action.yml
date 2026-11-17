@@ -43,6 +43,8 @@ runs:
         HOMEBREW_NO_AUTO_UPDATE: "1"
         HOMEBREW_NO_INSTALL_CLEANUP: "1"
         HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+        # Reuse runner-provided libraries to avoid upgrade-time linking conflicts.
+        HOMEBREW_NO_INSTALL_UPGRADE: "1"
         GIT_CONFIG_COUNT: "1"
         GIT_CONFIG_KEY_0: "advice.detachedHead"  # suppress "You are in 'detached HEAD' state. You can look around, make experimental"
         GIT_CONFIG_VALUE_0: "false"
