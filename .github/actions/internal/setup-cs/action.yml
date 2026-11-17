@@ -12,7 +12,7 @@ inputs:
     description: Path to store downloaded files
   mono-version:
     default: "6.12"
-    description: Mono version to install
+    description: Mono version to install (macOS uses the available Homebrew formula or cask version)
 
 runs:
   using: "composite"
@@ -90,10 +90,15 @@ runs:
               sudo apt-get install -y --allow-downgrades --no-install-recommends "mono-devel=$MONO_VERSION*" "mono-mcs=$MONO_VERSION*"
               ;;
             macOS)
-              # not possible to easily install specific releases by version number, see https://itnext.io/how-to-install-an-older-brew-package-add141e58d32
-              # one needs to find the correct commit in the homebrew repo to do so
-              # brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/2680713cb66fc2e52b945c66a942ffdf5254b5b1/Formula/mono.rb
-              brew install mono
+              if [[ "$(uname -m)" == "x86_64" ]]; then
+                # NOTE: Use the binary MDK until Homebrew provides Intel Mono bottles again.
+                # Building the formula from source exceeds the CI job timeout.
+                brew install --cask mono-mdk
+                # GitHub Actions steps do not reload the installer's /etc/paths.d entry.
+                echo "/Library/Frameworks/Mono.framework/Versions/Current/Commands" >> "$GITHUB_PATH"
+              else
+                brew install mono
+              fi
               ;;
             Windows)
               CACHE_FOLDER=$(cygpath "$CACHE_FOLDER")
