@@ -53,6 +53,7 @@ defaults:
 jobs:
   test-with-haxe-action-test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +130,7 @@ jobs:
           enabled: true
         test-cs: |
           allow-failure: true
-          enabled: true
+          enabled: ${{ matrix.haxe != 'nightly' }} # C# support removed from Haxe 5
         test-eval: |
           allow-failure: true
           enabled: true
@@ -143,7 +144,7 @@ jobs:
           enabled: true
         test-java: |
           allow-failure: true
-          enabled: true
+          enabled: ${{ matrix.haxe != 'nightly' }} # Java support removed from Haxe 5
         test-jvm: |
           allow-failure: true
           enabled: true

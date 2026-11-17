@@ -51,6 +51,7 @@ defaults:
 jobs:
   setup-haxe-targets-action-test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
