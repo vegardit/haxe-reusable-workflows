@@ -115,18 +115,30 @@ runs:
               # Wait for the MSI directly and preserve its exit code without killing shared log-follower processes.
               MONO_MSI_PATH="$(cygpath -w "$monoMSI")" powershell.exe -NoProfile -NonInteractive -Command '
                 $ErrorActionPreference = "Stop"
-                $logPath = Join-Path $env:RUNNER_TEMP "mono-install.log"
-                $installerArgs = "/i `"$env:MONO_MSI_PATH`" /quiet /norestart /L*v `"$logPath`""
-                $installer = Start-Process -FilePath "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $installerArgs -WindowStyle Hidden -Wait -PassThru
-                if (Test-Path -LiteralPath $logPath) {
-                  Get-Content -LiteralPath $logPath
+                function Invoke-MonoInstaller($operation, $package, $logName) {
+                  $logPath = Join-Path $env:RUNNER_TEMP $logName
+                  $installerArgs = "$operation `"$package`" /quiet /norestart /L*v `"$logPath`""
+                  $installer = Start-Process -FilePath "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $installerArgs -WindowStyle Hidden -Wait -PassThru
+                  if (Test-Path -LiteralPath $logPath) {
+                    Get-Content -LiteralPath $logPath
+                  }
+                  if ($installer.ExitCode -eq 3010) {
+                    Write-Output "::warning::Mono MSI operation $operation succeeded but requested a reboot."
+                  } elseif ($installer.ExitCode -ne 0) {
+                    Write-Output "::error::Mono MSI operation $operation failed with exit code $($installer.ExitCode)."
+                    exit $installer.ExitCode
+                  }
                 }
-                if ($installer.ExitCode -eq 3010) {
-                  Write-Output "::warning::Mono installation succeeded but requested a reboot."
-                } elseif ($installer.ExitCode -ne 0) {
-                  Write-Output "::error::Mono installation failed with MSI exit code $($installer.ExitCode)."
-                  exit $installer.ExitCode
+
+                # Mono MSIs reject downgrades, so remove the existing x64 MSI before switching versions.
+                $products = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" |
+                  Where-Object { $_.DisplayName -eq "Mono for Windows (x64)" -and $_.WindowsInstaller -eq 1 }
+                foreach ($product in $products) {
+                  $productCode = ([guid]$product.PSChildName).ToString("B")
+                  Write-Output "Uninstalling Mono $($product.DisplayVersion) ($productCode)."
+                  Invoke-MonoInstaller "/x" $productCode "mono-uninstall-$productCode.log"
                 }
+                Invoke-MonoInstaller "/i" $env:MONO_MSI_PATH "mono-install.log"
               '
               echo "$(cygpath -w "$PROGRAMFILES/Mono/bin")" >> $GITHUB_PATH
               ;;
