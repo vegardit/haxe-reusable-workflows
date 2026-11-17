@@ -22,7 +22,7 @@ runs:
     # - https://github.com/community/community/discussions/31054
     - name: "Git checkout workflow repo"
       if: env.ACT != 'true'  # https://github.com/nektos/act#skipping-steps
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         path: ./.github/temp/haxe-reusable-workflows
         repository: ${{ inputs.haxe-reusable-workflows-repo }}
