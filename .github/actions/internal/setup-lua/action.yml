@@ -11,7 +11,7 @@ inputs:
     default: "5.3.6"
     description: "Lua version"
   luarocks-version:
-    default: "3.11.0"
+    default: "3.13.0"
     description: "Luarocks version"
   cache-folder:
     default: "${{ runner.temp}}/haxe/targets/lua"

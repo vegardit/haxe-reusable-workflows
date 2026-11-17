@@ -2,6 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
+# Tests installation of default and explicitly selected Haxe target runtimes.
 # https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 name: Test "setup-haxe-targets" Action
 
@@ -94,7 +95,7 @@ jobs:
         setup-hl:     false
         setup-java:   17
         setup-lua:    5.2.4
-        setup-node:   20
+        setup-node:   24
         setup-php:    8.2
         setup-python: 3.11
 
