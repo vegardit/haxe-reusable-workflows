@@ -2,6 +2,7 @@
 # SPDX-FileContributor: Sebastian Thomschke, Vegard IT GmbH
 # SPDX-License-Identifier: Apache-2.0
 #
+# Tests the reusable Haxe workflow across compiler versions and supported runners.
 # https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax
 name: Test "test-with-haxe" Workflow
 
@@ -56,7 +57,7 @@ jobs:
       matrix:
         os:  # https://github.com/actions/runner-images#available-images
         - ubuntu-latest
-        - macos-15-intel
+        - macos-26-intel
         - windows-latest
         haxe:
         - nightly
