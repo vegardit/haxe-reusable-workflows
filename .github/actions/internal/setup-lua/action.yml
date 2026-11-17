@@ -71,6 +71,8 @@ runs:
               export PATH=/ucrt64/bin:$PATH
 
               cat <<EOF > /tmp/luarocks-config.lua # https://github.com/luarocks/luarocks/wiki/Config-file-format
+        -- Use UCRT import libraries; System32 DLLs can override the compiler's runtime libraries.
+        external_deps_dirs = { "$(cygpath -m /ucrt64)" }
         variables = {
           MSVCRT = "ucrt"
         }
