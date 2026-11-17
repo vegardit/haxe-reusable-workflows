@@ -112,11 +112,22 @@ runs:
                 resolved_mono_version=$(curl -sSfL https://download.mono-project.com/archive/${resolved_patch_version}/windows-installer/ | sed -n "s/.*mono-\(${resolved_patch_version//./\\.}[.0-9]*\)-.*/\1/p" | tail -1)
                 curl -sSfL https://download.mono-project.com/archive/${resolved_patch_version}/windows-installer/mono-${resolved_mono_version}-x64-0.msi -o $monoMSI
               fi
-              pushd $HOME
-                tail --follow=name --retry mono.log 2>/dev/null | dos2unix -f &
-                MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" cmd /c start /wait msiexec.exe /i "$(cygpath -w "$monoMSI")" /quiet /norestart /L*v mono.log
-                ps aux | grep "[t]ail --follow=name --retry mono.log" | awk '{print $2}' | xargs kill -9 2>/dev/null || true
-              popd
+              # Wait for the MSI directly and preserve its exit code without killing shared log-follower processes.
+              MONO_MSI_PATH="$(cygpath -w "$monoMSI")" powershell.exe -NoProfile -NonInteractive -Command '
+                $ErrorActionPreference = "Stop"
+                $logPath = Join-Path $env:RUNNER_TEMP "mono-install.log"
+                $installerArgs = "/i `"$env:MONO_MSI_PATH`" /quiet /norestart /L*v `"$logPath`""
+                $installer = Start-Process -FilePath "$env:SystemRoot\System32\msiexec.exe" -ArgumentList $installerArgs -WindowStyle Hidden -Wait -PassThru
+                if (Test-Path -LiteralPath $logPath) {
+                  Get-Content -LiteralPath $logPath
+                }
+                if ($installer.ExitCode -eq 3010) {
+                  Write-Output "::warning::Mono installation succeeded but requested a reboot."
+                } elseif ($installer.ExitCode -ne 0) {
+                  Write-Output "::error::Mono installation failed with MSI exit code $($installer.ExitCode)."
+                  exit $installer.ExitCode
+                }
+              '
               echo "$(cygpath -w "$PROGRAMFILES/Mono/bin")" >> $GITHUB_PATH
               ;;
           esac
